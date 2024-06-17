@@ -59,7 +59,7 @@ public:
 };
 
 // CompUnit 是 BaseAST
-class CompUnitAST : public BaseAST {
+class CompUnitAST : public BaseAST {     // 编译开始符
 public:
     std::vector<std::unique_ptr<FuncDefAST>> func_defs;
     std::vector<std::unique_ptr<DeclAST>> decls;
