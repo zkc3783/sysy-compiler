@@ -9,7 +9,7 @@
 在运行编译器时，指定`-koopa`和`-riscv`选项可分别生成 Koopa IR 和 RISC-V 汇编。进入项目文件夹下，执行如下指令：
 
 ```sh
-make -j4
+make
 build/compiler -koopa SysY文件路径 -o KoopaIR文件路径
 build/compiler -riscv SysY文件路径 -o RISC-V文件路径
 ```
@@ -38,7 +38,7 @@ build/compiler -riscv SysY文件路径 -o RISC-V文件路径
 
 ![模块图](pic/模块图.jpg)
 
-除此以外，还有一些辅助的模块，如`Symbol.[h|cpp]`中定义了类型、符号表相关的类；`utils.h`中定义了一些工具类，例如管理 Koopa IR 的`KoopaString`模块，管理 RISC-V 的`RiscvString`模块。
+除此以外,还有一些辅助的模块，如`Symbol.[h|cpp]`中定义了类型、符号表相关的类；`utils.h`中定义了一些工具类，例如管理 Koopa IR 的`KoopaString`模块。
 
 ### 2.2 主要数据结构
 
@@ -261,7 +261,7 @@ void Visit(const koopa_raw_value_t &value) {
 
 ##### 3.2.1.1 前端实现
 
-> 先介绍命名管理器，再介绍 `SymbolTableStack` ，然后说一说IR生成的大致过程。
+> 先介绍如何得到Koopa IR的名称，再介绍 `SymbolTableStack` ，再描述IR生成的大致过程。
 
 首先要介绍如下用于 Koopa IR 命名管理的类 `NameManager` 。`getTmpName`函数返回一个临时符号，依次返回`%0`,`%1`等标号。`getName`函数的输入是一个字符串，即SysY语言中的**标识符(identifier)**，返回一个字符串作为其在Koopa IR中的名字。例如，输入标识符`foo`，可能返回`@foo_0`，`@foo_1`，以此类推。而`getLabelName`与此类似，用于生成Koopa IR中基本块的标签，例如`%then_1`。
 
