@@ -68,7 +68,7 @@ public:
 };
 
 // FuncDef 也是 BaseAST
-class FuncDefAST : public BaseAST {
+class FuncDefAST : public BaseAST {         // 定义函数的节点
 public:
     std::unique_ptr<BTypeAST> btype;    // 返回值类型
     std::string ident;                  // 函数名标识符
@@ -77,14 +77,14 @@ public:
     void Dump() const;
 };
 
-class FuncFParamsAST : public BaseAST {
+class FuncFParamsAST : public BaseAST {     // 函数参数列表
 public:
     std::vector<std::unique_ptr<FuncFParamAST>> func_f_params;
     void Dump() const;
 };
 
 
-class FuncFParamAST : public BaseAST {
+class FuncFParamAST : public BaseAST {      // 函数参数
 public:
     enum TAG { VARIABLE, ARRAY };
     TAG tag;
@@ -97,13 +97,13 @@ public:
 
 
 // Block 也是 BaseAST
-class BlockAST : public BaseAST {
+class BlockAST : public BaseAST {       // 单入口单出口的基本块
 public:
     std::vector<std::unique_ptr<BlockItemAST>> block_items;
     void Dump(bool new_symbol_tb = true) const;
 };
 
-class BlockItemAST : public BaseAST {
+class BlockItemAST : public BaseAST {   // 块中的一个元素
 public:
     enum TAG {DECL, STMT};
     TAG tag;
@@ -112,7 +112,7 @@ public:
     void Dump() const;
 };
 
-class DeclAST : public BaseAST {
+class DeclAST : public BaseAST {        // 定义
 public:
     enum TAG {CONST_DECL, VAR_DECL};
     TAG tag;
