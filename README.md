@@ -38,7 +38,7 @@ build/compiler -riscv SysY文件路径 -o RISC-V文件路径
 
 ![模块图](pic/模块图.jpg)
 
-除此以外，还有一些辅助的模块，如`Symbol.[h|cpp]`中定义了类型、符号表相关的类；`utils.h`中定义了一些工具类，例如管理 Koopa IR 的`KoopaString`模块。
+除此以外,还有一些辅助的模块，如`Symbol.[h|cpp]`中定义了类型、符号表相关的类；`utils.h`中定义了一些工具类，例如管理 Koopa IR 的`KoopaString`模块。
 
 ### 2.2 主要数据结构
 
