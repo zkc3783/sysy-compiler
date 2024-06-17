@@ -42,6 +42,13 @@ class LOrExpAST;
 
 class FuncRParamsAST;
 
+/*
+    cmh
+    BaseAST 是语法树的节点类，它的所有子类表示不同的节点种类
+    虽然继承只有一层，但是例如 CompUnitAST 中定义了 std::vector<std::unique_ptr<FuncDefAST>> func_defs;
+    用类间关系来说就是关联关系
+*/
+
 // 所有 AST 的基类
 class BaseAST {
 public:
