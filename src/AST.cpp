@@ -66,7 +66,7 @@ std::string getElemPtr(const std::string &name, const std::vector<std::string>& 
     }
 }
 
-void CompUnitAST::Dump()const {
+void CompUnitAST::Dump()const {     // 编译开始符
     st.alloc(); // 全局作用域
     this->DumpGlobalVar();
     // 库函数声明
