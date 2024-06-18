@@ -11,10 +11,10 @@ private:
     std::unordered_map<std::string, int> no;
 public:
     NameManager():cnt(0){}
-    void reset();
-    std::string getTmpName();
-    std::string getName(const std::string &s);
-    std::string getLabelName(const std::string &s);
+    void reset();// name map初始化
+    std::string getTmpName();// 生成一个新的变量名
+    std::string getName(const std::string &s);// 标签名 + @ 的字符（变量）
+    std::string getLabelName(const std::string &s);// 标签名 + % 的字符（标签）
 };
 
 
@@ -22,17 +22,17 @@ class SysYType{
     public:
         enum TYPE{
             SYSY_INT, SYSY_INT_CONST, SYSY_FUNC_VOID, SYSY_FUNC_INT,
-            SYSY_ARRAY_CONST, SYSY_ARRAY
+            SYSY_ARRAY_CONST, SYSY_ARRAY // SYSY的种类
         };
-
         TYPE ty;
         int value;
         SysYType *next;
 
-        SysYType();
-        SysYType(TYPE _t);
-        SysYType(TYPE _t, int _v);
+        SysYType();// 初始化为整数类型 SYSY_INT，值为 -1，下一节点为空
+        SysYType(TYPE _t);// 使用给定类型 _t 初始化，值为 -1，下一节点为空
+        SysYType(TYPE _t, int _v);// 使用给定类型 _t 和值 _v 初始化，下一节点为空
         SysYType(TYPE _t, const std::vector<int> &len);
+        // 使用给定类型 _t 和维度长度数组 len 初始化。如果 _t 是常量数组类型，则 is_const 为 true。调用 buildFromArrayType 函数来初始化多维数组类型
 
         ~SysYType();
         void buildFromArrayType(const std::vector<int> &len, bool is_const);

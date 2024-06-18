@@ -1,7 +1,7 @@
 #include "Symbol.h"
 #include <iostream>
 using namespace std;
-
+// zyq 
 void NameManager::reset(){  // name map的初始化
     cnt = 0;
 }
