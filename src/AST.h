@@ -61,8 +61,8 @@ public:
 // CompUnit 是 BaseAST
 class CompUnitAST : public BaseAST {     // 编译开始符
 public:
-    std::vector<std::unique_ptr<FuncDefAST>> func_defs;
-    std::vector<std::unique_ptr<DeclAST>> decls;
+    std::vector<std::unique_ptr<FuncDefAST>> func_defs; // 所有函数定义
+    std::vector<std::unique_ptr<DeclAST>> decls;    // 所有全局变量
     void Dump()const;
     void DumpGlobalVar() const;
 };
