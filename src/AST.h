@@ -99,13 +99,13 @@ public:
 // Block 也是 BaseAST
 class BlockAST : public BaseAST {       // 单入口单出口的基本块
 public:
-    std::vector<std::unique_ptr<BlockItemAST>> block_items;
+    std::vector<std::unique_ptr<BlockItemAST>> block_items; //基本块中有很多元素，vector装 zkc
     void Dump(bool new_symbol_tb = true) const;
 };
 
 class BlockItemAST : public BaseAST {   // 块中的一个元素
 public:
-    enum TAG {DECL, STMT};
+    enum TAG {DECL, STMT};  //zkc 可以是常量变量定义（decl），或者语句（stmt）
     TAG tag;
     std::unique_ptr<DeclAST> decl;
     std::unique_ptr<StmtAST> stmt;
@@ -135,7 +135,7 @@ public:
      * 以及IF语句
     */
     enum TAG {RETURN, ASSIGN, BLOCK, EXP, WHILE, BREAK, CONTINUE, IF};
-    TAG tag;
+    TAG tag; //语句可能是以上的某一种，是哪种就用下面的哪种指针对应的类
     std::unique_ptr<ExpAST> exp;
     std::unique_ptr<LValAST> lval;
     std::unique_ptr<BlockAST> block;
@@ -257,7 +257,7 @@ public:
     int getValue();
 };
 
-class PrimaryExpAST : public BaseAST {
+class PrimaryExpAST : public BaseAST { //表达式成员，可以是另一个表达式exp，一个数number，或一个量lval
 public:
     enum TAG { PARENTHESES, NUMBER, LVAL};
     TAG tag;
@@ -269,7 +269,7 @@ public:
 };
 
 
-class UnaryExpAST : public BaseAST {
+class UnaryExpAST : public BaseAST { //处理一元运算+,-,!正负非，否则交给上层primary_exp模块
 public:
     enum TAG { PRIMARY_EXP, OP_UNITARY_EXP, FUNC_CALL};
     TAG tag;
@@ -283,7 +283,7 @@ public:
 };
 
 // MulExp
-class MulExpAST : public BaseAST {
+class MulExpAST : public BaseAST { //处理乘,除,取模运算，否则交给上层unary_exp模块
 public:
     enum TAG {UNARY_EXP, OP_MUL_EXP};
     TAG tag;
@@ -296,7 +296,7 @@ public:
 };
 
 // AddExp
-class AddExpAST : public BaseAST {
+class AddExpAST : public BaseAST { //处理加减，否则交给上层mul_exp模块
 public:
     enum TAG {MUL_EXP, OP_ADD_EXP};
     TAG tag;
@@ -309,7 +309,7 @@ public:
 };
 
 // RelExp
-class RelExpAST : public BaseAST {
+class RelExpAST : public BaseAST { //处理大小比较，否则交给上层add_exp模块
 public:
     enum TAG {ADD_EXP, OP_REL_EXP};
     TAG tag;
@@ -321,7 +321,7 @@ public:
     int getValue();
 };
 
-class EqExpAST : public BaseAST {
+class EqExpAST : public BaseAST {//处理相等或不等，否则给上层rel_exp模块
 public:
     enum TAG {REL_EXP, OP_EQ_EXP};
     TAG tag;
@@ -333,7 +333,7 @@ public:
     int getValue();
 };
 
-class LAndExpAST : public BaseAST {
+class LAndExpAST : public BaseAST { //处理与，否则给上层eq_exp模块
 public:
     enum TAG {EQ_EXP, OP_L_AND_EXP};
     TAG tag;
@@ -344,7 +344,7 @@ public:
     int getValue();
 };
 
-class LOrExpAST : public BaseAST {
+class LOrExpAST : public BaseAST { //处理或，否则给上层l_and_exp模块
 public:
     enum TAG {L_AND_EXP, OP_L_OR_EXP};
     TAG tag;

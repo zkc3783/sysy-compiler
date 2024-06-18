@@ -604,7 +604,7 @@ int ConstExpAST::getValue(){
 string ExpAST::Dump() const {
     return l_or_exp->Dump();
 }
-
+ 
 int ExpAST::getValue(){
     return l_or_exp->getValue();
 }
@@ -673,7 +673,7 @@ int UnaryExpAST::getValue(){
     return unary_op == '-' ? -v : !v;
 }
 
-string MulExpAST::Dump() const{
+string MulExpAST::Dump() const{ 
     if(tag == UNARY_EXP)return unary_exp->Dump();
     string a, b, c;
     
