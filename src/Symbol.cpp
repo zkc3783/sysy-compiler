@@ -224,12 +224,12 @@ std::string SymbolTableStack::getName(const std::string &ident){
 std::string SymbolTableStack::getTmpName(){
     return nm.getTmpName();
 }
-// 生成一个新的临时变量名
+// 获取临时变量名
 std::string SymbolTableStack::getLabelName(const std::string &label_ident){
     return nm.getLabelName(label_ident);
 }
-// 生成一个标签名，用于标识代码中的跳转位置
+// 获取标签名
 std::string SymbolTableStack::getVarName(const std::string& var){
     return nm.getName(var);
 }
-// 生成或获取一个变量名
+// 获取一个变量名
