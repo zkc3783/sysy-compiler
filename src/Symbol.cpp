@@ -37,11 +37,13 @@ SysYType::SysYType(TYPE _t):ty(_t), value(-1), next(nullptr){} // 使用给定�
 
 SysYType::SysYType(TYPE _t, int _v): ty(_t), value(_v), next(nullptr){} // 使用给定类型 _t 和值 _v 初始化
 
+/*
 SysYType::SysYType(TYPE _t, const std::vector<int> &len):ty(_t), value(-1), next(nullptr){ 
     // 使用给定类型 _t 和维度长度数组 len 初始化。如果 _t 是常量数组类型，则 is_const 为 true。调用 buildFromArrayType 函数来初始化多维数组类型
     buildFromArrayType(len, _t == SYSY_ARRAY_CONST);
 }
-
+*/
+/*
 SysYType::~SysYType() { 
     auto p = next;
     if(p != nullptr){
@@ -50,7 +52,8 @@ SysYType::~SysYType() {
         delete prev;
     } // p若不是空指针，删除当前p
 }
-
+*/
+/*
 void SysYType::buildFromArrayType(const std::vector<int> &len, bool is_const){
     TYPE t = is_const ? SYSY_ARRAY_CONST : SYSY_ARRAY;
     SysYType *p = this;
@@ -64,8 +67,10 @@ void SysYType::buildFromArrayType(const std::vector<int> &len, bool is_const){
     p = p->next;
     p->ty = is_const ? SYSY_INT_CONST : SYSY_INT;
 }
+*/
 // buildFromArrayType 函数用于根据给定的维度长度数组 len 构建数组类型链表 如果 is_const 为 true，则类型为常量数组类型，否则为普通数组类型
 // 每个节点表示一个数组维度，最后一个节点表示数组的基本类型
+/*
 void SysYType::getArrayType(std::vector<int> &len){
     len.clear();
     SysYType *p = this;
@@ -74,8 +79,9 @@ void SysYType::getArrayType(std::vector<int> &len){
         p = p->next;
     }
     return;
-} // 用链表查找，获取数组的维度信息，然后存到len向量中
-
+} 
+*/
+// 用链表查找，获取数组的维度信息，然后存到len向量中
 Symbol::Symbol(const std::string &_ident, const std::string &_name, SysYType *_t): ident(_ident), name(_name), ty(_t){
 }
 // 构造函数：使用标识符 _ident、名称 _name 和类型指针 _t 初始化 Symbol
@@ -112,12 +118,13 @@ void SymbolTable::insertFUNC(const std::string &ident, const std::string &name, 
     insert(ident, name, _t, UNKNOWN);
 }
 
-
+/*
 void SymbolTable::insertArray(const std::string &ident, const std::string &name, const std::vector<int> &len, SysYType::TYPE _t){
     SysYType *ty = new SysYType(_t, len);
     Symbol *sym = new Symbol(ident, name, ty);
     insert(sym);
 }
+*/
 // 插入一个数组类型的符号
 
 bool SymbolTable::exists(const std::string &ident){
@@ -181,10 +188,12 @@ void SymbolTableStack::insertFUNC(const std::string &ident, SysYType::TYPE _t){
     sym_tb_st.back()->insertFUNC(ident, name, _t);
 }
 // 插入一个函数符号
+/*
 void SymbolTableStack::insertArray(const std::string &ident, const std::vector<int> &len, SysYType::TYPE _t){
     string name = nm.getName(ident);
     sym_tb_st.back()->insertArray(ident, name, len, _t);
 }
+*/
 // 插入一个数组符号
 bool SymbolTableStack::exists(const std::string &ident){
     for(int i = (int)sym_tb_st.size() - 1; i >= 0; --i){
