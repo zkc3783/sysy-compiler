@@ -26,49 +26,49 @@ WhileStack wst;         // 用栈管理循环，记录入口、循环体和结�
  * @param ptr: 指向数组的内容，例如{"1", "%2"}
  * @param len: 描述数组类型，i.e. 各个维度的长
 */
-void initArray(std::string name, std::string *ptr, const std::vector<int> &len){    
-    int n = len[0];
-    if(len.size() == 1){
-        for(int i = 0; i < n; ++i){
-            string tmp = st.getTmpName();
-            ks.getelemptr(tmp, name, i);
-            ks.store(ptr[i], tmp);
-        }
-    } else {
-        vector<int> sublen(len.begin() + 1, len.end());
-        int width = 1;
-        for(auto l : sublen)  width *= l;
-        for(int i = 0; i < n; ++i){
-            string tmp = st.getTmpName();
-            ks.getelemptr(tmp, name, i);
-            initArray(tmp, ptr + i * width, sublen);
-        }
-    }
-}
+// void initArray(std::string name, std::string *ptr, const std::vector<int> &len){    
+//     int n = len[0];
+//     if(len.size() == 1){
+//         for(int i = 0; i < n; ++i){
+//             string tmp = st.getTmpName();
+//             ks.getelemptr(tmp, name, i);
+//             ks.store(ptr[i], tmp);
+//         }
+//     } else {
+//         vector<int> sublen(len.begin() + 1, len.end());
+//         int width = 1;
+//         for(auto l : sublen)  width *= l;
+//         for(int i = 0; i < n; ++i){
+//             string tmp = st.getTmpName();
+//             ks.getelemptr(tmp, name, i);
+//             initArray(tmp, ptr + i * width, sublen);
+//         }
+//     }
+// }
 
 /**
  * 返回数组中某个元素的指针
  * @param name: 数组在Koopa IR中的名字 
  * @param index: 元素在数组中的下标
 */
-std::string getElemPtr(const std::string &name, const std::vector<std::string>& index){
-    if(index.size() == 1){
-        string tmp = st.getTmpName();
-        ks.getelemptr(tmp, name, index[0]);
-        return tmp;
-    } else {
-        string tmp = st.getTmpName();
-        ks.getelemptr(tmp, name, index[0]);
-        return getElemPtr(
-            tmp,
-            vector<string>(index.begin() + 1, index.end())
-        );
-    }
-}
+// std::string getElemPtr(const std::string &name, const std::vector<std::string>& index){
+//     if(index.size() == 1){
+//         string tmp = st.getTmpName();
+//         ks.getelemptr(tmp, name, index[0]);
+//         return tmp;
+//     } else {
+//         string tmp = st.getTmpName();
+//         ks.getelemptr(tmp, name, index[0]);
+//         return getElemPtr(
+//             tmp,
+//             vector<string>(index.begin() + 1, index.end())
+//         );
+//     }
+// }
 
 void CompUnitAST::Dump()const {
     st.alloc(); // 全局作用域
-    this->DumpGlobalVar();
+    this->DumpGlobalVar();  // 处理全局变量  
     // 库函数声明
     ks.declLibFunc();
     st.insertFUNC("getint", SysYType::SYSY_FUNC_INT);
@@ -146,27 +146,27 @@ void FuncDefAST::Dump() const {
         for(auto &fp : func_params->func_f_params){
             string var = var_names[i++];
 
-            if(fp->tag == FuncFParamAST::VARIABLE){
+            // if(fp->tag == FuncFParamAST::VARIABLE){
                 st.insertINT(fp->ident);
                 string name = st.getName(fp->ident);
 
                 ks.alloc(name);
                 ks.store(var, name);
-            }else{
+            // }else{
                 
-                vector<int> len;
-                vector<int> padding_len;
-                padding_len.push_back(-1);
+            //     vector<int> len;
+            //     vector<int> padding_len;
+            //     padding_len.push_back(-1);
 
-                fp->getIndex(len);
-                for(int l : len) padding_len.push_back(l);
+            //     fp->getIndex(len);
+            //     for(int l : len) padding_len.push_back(l);
                 
-                st.insertArray(fp->ident, padding_len, SysYType::SYSY_ARRAY);
-                string name = st.getName(fp->ident);
+            //     st.insertArray(fp->ident, padding_len, SysYType::SYSY_ARRAY);
+            //     string name = st.getName(fp->ident);
 
-                ks.alloc(name, "*" + ks.getArrayType(len));
-                ks.store(var, name);
-            }
+            //     ks.alloc(name, "*" + ks.getArrayType(len));
+            //     ks.store(var, name);
+            // }
         }
     }
 
@@ -337,49 +337,49 @@ void BTypeAST::Dump() const{
 }
 
 void ConstDefAST::Dump(bool is_global) const{
-    if(tag == ARRAY){
-        DumpArray(is_global);
-        return;
-    }
+    // if(tag == ARRAY){
+    //     DumpArray(is_global);
+    //     return;
+    // }
     int v = const_init_val->getValue();
     st.insertINTCONST(ident, v);
 }
 
-void ConstDefAST::DumpArray(bool is_global) const{
+// void ConstDefAST::DumpArray(bool is_global) const{
     
 
-    vector<int> len;
-    for(auto &ce : const_exps){
-        len.push_back(ce->getValue());
-    }
-    st.insertArray(ident, len,SysYType::SYSY_ARRAY_CONST);
-    string name = st.getName(ident);
-    string array_type = ks.getArrayType(len);
+//     vector<int> len;
+//     for(auto &ce : const_exps){
+//         len.push_back(ce->getValue());
+//     }
+//     st.insertArray(ident, len,SysYType::SYSY_ARRAY_CONST);
+//     string name = st.getName(ident);
+//     string array_type = ks.getArrayType(len);
 
-    int tot_len = 1;
-    for(auto i : len) tot_len *= i;
-    string *init = new string[tot_len];
-    for(int i = 0; i < tot_len; ++i)
-        init[i] = "0";
+//     int tot_len = 1;
+//     for(auto i : len) tot_len *= i;
+//     string *init = new string[tot_len];
+//     for(int i = 0; i < tot_len; ++i)
+//         init[i] = "0";
     
-    const_init_val->getInitVal(init, len);
+//     const_init_val->getInitVal(init, len);
 
-    if(is_global){
-        // Global Const Array
-        ks.globalAllocArray(name, array_type, ks.getInitList(init, len));
-    } else {
-        // Local Const Array
-        ks.alloc(name, array_type);
-        initArray(name, init, len);
-    }
-    return;
-}
+//     if(is_global){
+//         // Global Const Array
+//         ks.globalAllocArray(name, array_type, ks.getInitList(init, len));
+//     } else {
+//         // Local Const Array
+//         ks.alloc(name, array_type);
+//         initArray(name, init, len);
+//     }
+//     return;
+// }
 
 void VarDefAST::Dump(bool is_global) const{
-    if(tag == ARRAY){
-        DumpArray(is_global);
-        return;
-    }
+    // if(tag == ARRAY){
+    //     DumpArray(is_global);
+    //     return;
+    // }
     st.insertINT(ident);
     string name = st.getName(ident);
     if(is_global){
@@ -399,38 +399,38 @@ void VarDefAST::Dump(bool is_global) const{
     return;
 }
 
-void VarDefAST::DumpArray(bool is_global) const {
-    vector<int> len;
-    for(auto &ce : const_exps){
-        len.push_back(ce->getValue());
-    }
+// void VarDefAST::DumpArray(bool is_global) const {
+//     vector<int> len;
+//     for(auto &ce : const_exps){
+//         len.push_back(ce->getValue());
+//     }
 
-    st.insertArray(ident, len, SysYType::SYSY_ARRAY);
+//     st.insertArray(ident, len, SysYType::SYSY_ARRAY);
 
-    string name = st.getName(ident);
-    string array_type = ks.getArrayType(len);
+//     string name = st.getName(ident);
+//     string array_type = ks.getArrayType(len);
     
-    int tot_len = 1;
-    for(auto i : len) tot_len *= i;
-    string *init = new string[tot_len];
-    for(int i = 0; i < tot_len; ++i)
-        init[i] = "0";
+//     int tot_len = 1;
+//     for(auto i : len) tot_len *= i;
+//     string *init = new string[tot_len];
+//     for(int i = 0; i < tot_len; ++i)
+//         init[i] = "0";
 
-    if(is_global){
-        if(init_val != nullptr){
-            init_val->getInitVal(init, len, true);
-        }
-        ks.globalAllocArray(name, array_type, ks.getInitList(init, len));
-    } else {
-        ks.alloc(name, array_type);
-        if(init_val == nullptr) 
-            return;
-        init_val->getInitVal(init, len, false);
+//     if(is_global){
+//         if(init_val != nullptr){
+//             init_val->getInitVal(init, len, true);
+//         }
+//         ks.globalAllocArray(name, array_type, ks.getInitList(init, len));
+//     } else {
+//         ks.alloc(name, array_type);
+//         if(init_val == nullptr) 
+//             return;
+//         init_val->getInitVal(init, len, false);
 
-        initArray(name, init, len);
-    }
-    return;
-}
+//         initArray(name, init, len);
+//     }
+//     return;
+// }
 
 string InitValAST::Dump() const{
     return exp->Dump();
@@ -516,7 +516,7 @@ void ConstInitValAST::getInitVal(std::string *ptr, const std::vector<int> &len) 
 }
 
 string LValAST::Dump(bool dump_ptr)const{
-    if(tag == VARIABLE){
+    // if(tag == VARIABLE){
         // Hint: a single a ident be a array address
         SysYType *ty = st.getType(ident);
         if(ty->ty == SysYType::SYSY_INT_CONST)
@@ -540,56 +540,56 @@ string LValAST::Dump(bool dump_ptr)const{
             ks.getelemptr(tmp, st.getName(ident), "0");
             return tmp;
         }
-    } else {
-        vector<string> index;
-        vector<int> len;
+    // } else {
+    //     vector<string> index;
+    //     vector<int> len;
 
-        for(auto &e: exps){
-            index.push_back(e->Dump());
-        }
+    //     for(auto &e: exps){
+    //         index.push_back(e->Dump());
+    //     }
 
-        SysYType *ty = st.getType(ident);
-        ty->getArrayType(len);
+    //     SysYType *ty = st.getType(ident);
+    //     ty->getArrayType(len);
 
-        // hint: len可以是-1开头的，说明这个数组是函数中使用的参数
-        // 如 a[-1][3][2],表明a是参数 a[][3][2], 即 *[3][2].
-        // 此时第一步不能用getelemptr，而应该getptr
+    //     // hint: len可以是-1开头的，说明这个数组是函数中使用的参数
+    //     // 如 a[-1][3][2],表明a是参数 a[][3][2], 即 *[3][2].
+    //     // 此时第一步不能用getelemptr，而应该getptr
 
-        string name = st.getName(ident);
-        string tmp;
-        if(len.size() != 0 && len[0] == -1){
-            vector<int> sublen(len.begin() + 1, len.end());
-            string tmp_val = st.getTmpName();
-            ks.load(tmp_val, name);
-            string first_indexed = st.getTmpName();
-            ks.getptr(first_indexed, tmp_val, index[0]);
-            if(index.size() > 1){
-                tmp = getElemPtr(
-                    first_indexed,
-                    vector<string>(
-                        index.begin() + 1, index.end()
-                    )
-                );
-            } else {
-                tmp = first_indexed;
-            }
+    //     string name = st.getName(ident);
+    //     string tmp;
+    //     if(len.size() != 0 && len[0] == -1){
+    //         vector<int> sublen(len.begin() + 1, len.end());
+    //         string tmp_val = st.getTmpName();
+    //         ks.load(tmp_val, name);
+    //         string first_indexed = st.getTmpName();
+    //         ks.getptr(first_indexed, tmp_val, index[0]);
+    //         if(index.size() > 1){
+    //             tmp = getElemPtr(
+    //                 first_indexed,
+    //                 vector<string>(
+    //                     index.begin() + 1, index.end()
+    //                 )
+    //             );
+    //         } else {
+    //             tmp = first_indexed;
+    //         }
             
-        } else {
-            tmp = getElemPtr(name, index);
-        }   
+    //     } else {
+    //         tmp = getElemPtr(name, index);
+    //     }   
         
 
-        if(index.size() < len.size()){
-            // 一定是作为函数参数即实参使用，因为下标不完整
-            string real_param = st.getTmpName();
-            ks.getelemptr(real_param, tmp, "0");
-            return real_param;
-        }
-        if(dump_ptr) return tmp;
-        string tmp2 = st.getTmpName();
-        ks.load(tmp2, tmp);
-        return tmp2;
-    }
+    //     if(index.size() < len.size()){
+    //         // 一定是作为函数参数即实参使用，因为下标不完整
+    //         string real_param = st.getTmpName();
+    //         ks.getelemptr(real_param, tmp, "0");
+    //         return real_param;
+    //     }
+    //     if(dump_ptr) return tmp;
+    //     string tmp2 = st.getTmpName();
+    //     ks.load(tmp2, tmp);
+    //     return tmp2;
+    // }
 }
 
 int LValAST::getValue(){
