@@ -187,14 +187,14 @@ void FuncDefAST::Dump() const {
 }
 
 string FuncFParamAST::Dump() const{
-    if(tag == VARIABLE){
+    // if(tag == VARIABLE){
         return "i32";
-    }
-    string ans = "i32";
-    for(auto &ce: const_exps){
-        ans = "[" + ans + ", " + to_string(ce->getValue()) + "]";
-    }
-    return "*" + ans;
+    // }
+    // string ans = "i32";
+    // for(auto &ce: const_exps){
+    //     ans = "[" + ans + ", " + to_string(ce->getValue()) + "]";
+    // }
+    // return "*" + ans;
 }
 
 void FuncFParamAST::getIndex(std::vector<int> &len){
@@ -436,84 +436,84 @@ string InitValAST::Dump() const{
     return exp->Dump();
 }
 
-void InitValAST::getInitVal(std::string *ptr, const std::vector<int> &len, bool is_global) const{
-    int n = len.size();
-    vector<int> width(n);
-    width[n - 1] = len[n - 1];
-    for(int i = n - 2; i >= 0; --i){
-        width[i] = width[i + 1] * len[i];
-    }
-    int i = 0;  // 指向下一步要填写的内存位置
-    for(auto &init_val : inits){
-        if(init_val->tag == EXP){
-            if(is_global){
-                ptr[i++] = to_string(init_val->exp->getValue());
-            } else{
-                ptr[i++] = init_val->Dump();
-            }
-        } else {
-            assert(n > 1);  // 对一维数组初始化不可能再套一个Aggregate{{}}
-            int j = n - 1;
-            if(i == 0){
-                j = 1;
-            } else{
-                j = n - 1;
-                for(; j >= 0; --j){
-                    if(i % width[j] != 0)
-                        break;
-                }
-                assert(j < n - 1); // 保证整除最后一维
-                ++j;    // j 指向最大的可除的维度
-            }
-            init_val->getInitVal(
-                ptr + i, 
-                vector<int>(len.begin() + j, len.end())
-                );
-            i += width[j];
-        }
-        if(i >= width[0]) break;
-    }
-}
+// void InitValAST::getInitVal(std::string *ptr, const std::vector<int> &len, bool is_global) const{
+//     int n = len.size();
+//     vector<int> width(n);
+//     width[n - 1] = len[n - 1];
+//     for(int i = n - 2; i >= 0; --i){
+//         width[i] = width[i + 1] * len[i];
+//     }
+//     int i = 0;  // 指向下一步要填写的内存位置
+//     for(auto &init_val : inits){
+//         if(init_val->tag == EXP){
+//             if(is_global){
+//                 ptr[i++] = to_string(init_val->exp->getValue());
+//             } else{
+//                 ptr[i++] = init_val->Dump();
+//             }
+//         } else {
+//             assert(n > 1);  // 对一维数组初始化不可能再套一个Aggregate{{}}
+//             int j = n - 1;
+//             if(i == 0){
+//                 j = 1;
+//             } else{
+//                 j = n - 1;
+//                 for(; j >= 0; --j){
+//                     if(i % width[j] != 0)
+//                         break;
+//                 }
+//                 assert(j < n - 1); // 保证整除最后一维
+//                 ++j;    // j 指向最大的可除的维度
+//             }
+//             init_val->getInitVal(
+//                 ptr + i, 
+//                 vector<int>(len.begin() + j, len.end())
+//                 );
+//             i += width[j];
+//         }
+//         if(i >= width[0]) break;
+//     }
+// }
 
 int ConstInitValAST::getValue(){
     return const_exp->getValue();
 }
 
 // 对ptr指向的区域初始化，所指区域的数组类型由len规定
-void ConstInitValAST::getInitVal(std::string *ptr, const std::vector<int> &len) const{
-    int n = len.size();
-    vector<int> width(n);
-    width[n - 1] = len[n - 1];
-    for(int i = n - 2; i >= 0; --i){
-        width[i] = width[i + 1] * len[i];
-    }
-    int i = 0;  // 指向下一步要填写的内存位置
-    for(auto &init_val : inits){
-        if(init_val->tag == CONST_EXP){
-            ptr[i++] = to_string(init_val->getValue());
-        } else {
-            assert(n > 1);  // 对一维数组初始化不可能再套一个Aggregate{{}}
-            int j = n - 1;
-            if(i == 0){
-                j = 1;
-            } else{
-                j = n - 1;
-                for(; j >= 0; --j){
-                    if(i % width[j] != 0)
-                        break;
-                }
-                assert(j < n - 1); // 保证整除最后一维
-                ++j;    // j 指向最大的可除的维度
-            }
-            init_val->getInitVal(
-                ptr + i, 
-                vector<int>(len.begin() + j, len.end())
-                );
-            i += width[j];
-        }
-        if(i >= width[0]) break;
-    }
-}
+// void ConstInitValAST::getInitVal(std::string *ptr, const std::vector<int> &len) const{
+//     int n = len.size();
+//     vector<int> width(n);
+//     width[n - 1] = len[n - 1];
+//     for(int i = n - 2; i >= 0; --i){
+//         width[i] = width[i + 1] * len[i];
+//     }
+//     int i = 0;  // 指向下一步要填写的内存位置
+//     for(auto &init_val : inits){
+//         if(init_val->tag == CONST_EXP){
+//             ptr[i++] = to_string(init_val->getValue());
+//         } else {
+//             assert(n > 1);  // 对一维数组初始化不可能再套一个Aggregate{{}}
+//             int j = n - 1;
+//             if(i == 0){
+//                 j = 1;
+//             } else{
+//                 j = n - 1;
+//                 for(; j >= 0; --j){
+//                     if(i % width[j] != 0)
+//                         break;
+//                 }
+//                 assert(j < n - 1); // 保证整除最后一维
+//                 ++j;    // j 指向最大的可除的维度
+//             }
+//             init_val->getInitVal(
+//                 ptr + i, 
+//                 vector<int>(len.begin() + j, len.end())
+//                 );
+//             i += width[j];
+//         }
+//         if(i >= width[0]) break;
+//     }
+// }
 
 string LValAST::Dump(bool dump_ptr)const{
     // if(tag == VARIABLE){
