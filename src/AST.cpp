@@ -10,10 +10,11 @@
 #include "utils.h"
 using namespace std;
 
-KoopaString ks;
-SymbolTableStack st;
-BlockController bc;
-WhileStack wst;
+KoopaString ks;         // Koopa 字符串
+SymbolTableStack st;    // 符号表
+BlockController bc;     // 通过一个bool值管理代码块的活动状态（例如遇到break，return）
+                        // set设为1，finish设为0，alive检查值
+WhileStack wst;         // 用栈管理循环，记录入口、循环体和结束的标签
 
 /**
  * helper functions
@@ -603,7 +604,7 @@ int ConstExpAST::getValue(){
 string ExpAST::Dump() const {
     return l_or_exp->Dump();
 }
-
+ 
 int ExpAST::getValue(){
     return l_or_exp->getValue();
 }
@@ -672,7 +673,7 @@ int UnaryExpAST::getValue(){
     return unary_op == '-' ? -v : !v;
 }
 
-string MulExpAST::Dump() const{
+string MulExpAST::Dump() const{ 
     if(tag == UNARY_EXP)return unary_exp->Dump();
     string a, b, c;
     
