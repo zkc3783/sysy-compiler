@@ -151,7 +151,7 @@ void FuncDefAST::Dump() const {
 }
 
 string FuncFParamAST::Dump() const{
-    ScopeHelper scope("FuncFParamAST");
+    ScopeHelper scope("FuncFParamAST", ident);
     return "i32";
 }
 
