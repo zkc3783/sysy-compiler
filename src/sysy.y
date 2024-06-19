@@ -153,13 +153,11 @@ FuncFParams
 FuncFParam
   : BType IDENT {
     auto func_param = new FuncFParamAST();
-    func_param->tag = FuncFParamAST::VARIABLE;
     func_param->btype.reset((BTypeAST *)$1);
     func_param->ident = *unique_ptr<string>($2);
     $$ = func_param;
   } | BType IDENT '[' ']' {
     auto func_param = new FuncFParamAST();
-    func_param->tag = FuncFParamAST::ARRAY;
     func_param->btype.reset((BTypeAST *)$1);
     func_param->ident = *unique_ptr<string>($2);
     $$ = func_param;
@@ -412,7 +410,6 @@ BType
 ConstDef
   : IDENT '=' ConstInitVal {
     auto const_def = new ConstDefAST();
-    const_def->tag = ConstDefAST::VARIABLE;
     const_def->ident = *unique_ptr<string>($1);
     const_def->const_init_val = unique_ptr<ConstInitValAST>((ConstInitValAST *)$3);
     $$ = const_def;
@@ -422,12 +419,10 @@ ConstDef
 VarDef
   : IDENT{
     auto var_def = new VarDefAST();
-    var_def->tag = VarDefAST::VARIABLE;
     var_def->ident = *unique_ptr<string>($1);
     $$ = var_def;
   } | IDENT '=' InitVal {
     auto var_def = new VarDefAST();
-    var_def->tag = VarDefAST::VARIABLE;
     var_def->ident = *unique_ptr<string>($1);
     var_def->init_val = unique_ptr<InitValAST>((InitValAST *)$3);
     $$ = var_def;
@@ -437,12 +432,10 @@ VarDef
 InitVal
   : Exp{
     auto init_val = new InitValAST();
-    init_val->tag = InitValAST::EXP;
     init_val->exp.reset((ExpAST *)$1);
     $$ = init_val;
   } | '{' '}' {
     auto init_val = new InitValAST();
-    init_val->tag = InitValAST::INIT_LIST;
     $$ = init_val;
   } | '{' InitValList '}' {
     $$ = $2;
@@ -451,12 +444,9 @@ InitVal
 InitValList
   : InitVal {
     auto init_val = new InitValAST();
-    init_val->tag = InitValAST::INIT_LIST;
-    init_val->inits.emplace_back((InitValAST *)$1);
     $$ = init_val;
   } | InitValList ',' InitVal {
     auto init_val = (InitValAST *)$1;
-    init_val->inits.emplace_back((InitValAST *)$3);
     $$ = init_val;
   }
   ;
@@ -464,12 +454,10 @@ InitValList
 ConstInitVal
   : ConstExp {
     auto const_init_val = new ConstInitValAST();
-    const_init_val->tag = ConstInitValAST::CONST_EXP;
     const_init_val->const_exp = unique_ptr<ConstExpAST>((ConstExpAST *)$1);
     $$ = const_init_val;
   } |'{' '}' {
     auto const_init_val = new ConstInitValAST();
-    const_init_val->tag = ConstInitValAST::CONST_INIT_LIST;
     $$ = const_init_val;
   } | '{' ConstInitValList '}' {
     $$ = $2;
@@ -479,12 +467,9 @@ ConstInitVal
 ConstInitValList
   : ConstInitVal {
     auto init_val = new ConstInitValAST();
-    init_val->tag = ConstInitValAST::CONST_INIT_LIST;
-    init_val->inits.emplace_back((ConstInitValAST *)$1);
     $$ = init_val;
   } | ConstInitValList ',' ConstInitVal {
     auto init_val = (ConstInitValAST *)$1;
-    init_val->inits.emplace_back((ConstInitValAST *)$3);
     $$ = init_val;
   }
   ;
@@ -493,7 +478,6 @@ ConstInitValList
 LVal
   : IDENT {
     auto lval = new LValAST();
-    lval->tag = LValAST::VARIABLE;
     lval->ident = *unique_ptr<string>($1);
     $$ = lval;
   }

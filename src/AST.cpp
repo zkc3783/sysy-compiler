@@ -16,56 +16,6 @@ BlockController bc;     // 通过一个bool值管理代码块的活动状态（�
                         // set设为1，finish设为0，alive检查值
 WhileStack wst;         // 用栈管理循环，记录入口、循环体和结束的标签
 
-/**
- * helper functions
-*/
-
-/**
- * 完成对Local数组初始化的IR生成
- * @param name: 数组在Koopa IR中的名字 
- * @param ptr: 指向数组的内容，例如{"1", "%2"}
- * @param len: 描述数组类型，i.e. 各个维度的长
-*/
-// void initArray(std::string name, std::string *ptr, const std::vector<int> &len){    
-//     int n = len[0];
-//     if(len.size() == 1){
-//         for(int i = 0; i < n; ++i){
-//             string tmp = st.getTmpName();
-//             ks.getelemptr(tmp, name, i);
-//             ks.store(ptr[i], tmp);
-//         }
-//     } else {
-//         vector<int> sublen(len.begin() + 1, len.end());
-//         int width = 1;
-//         for(auto l : sublen)  width *= l;
-//         for(int i = 0; i < n; ++i){
-//             string tmp = st.getTmpName();
-//             ks.getelemptr(tmp, name, i);
-//             initArray(tmp, ptr + i * width, sublen);
-//         }
-//     }
-// }
-
-/**
- * 返回数组中某个元素的指针
- * @param name: 数组在Koopa IR中的名字 
- * @param index: 元素在数组中的下标
-*/
-// std::string getElemPtr(const std::string &name, const std::vector<std::string>& index){
-//     if(index.size() == 1){
-//         string tmp = st.getTmpName();
-//         ks.getelemptr(tmp, name, index[0]);
-//         return tmp;
-//     } else {
-//         string tmp = st.getTmpName();
-//         ks.getelemptr(tmp, name, index[0]);
-//         return getElemPtr(
-//             tmp,
-//             vector<string>(index.begin() + 1, index.end())
-//         );
-//     }
-// }
-
 class ScopeHelper {
 private:
     static int depth;  // 静态变量，用于记录当前嵌套层数
@@ -164,46 +114,27 @@ void FuncDefAST::Dump() const {
     }
     ks.append(")");
     btype->Dump();
-    // if(btype->tag == BTypeAST::INT){
-    //     ks.append(": i32");
-    // }
     ks.append(" {\n");
 
     // 进入Block
     bc.set();
     ks.label("%entry");
 
-    // 提前把虚参加载到变量中
+    // 把参数加载到变量中
     if(func_params != nullptr){
         int i = 0;
         for(auto &fp : func_params->func_f_params){
             string var = var_names[i++];
 
-            // if(fp->tag == FuncFParamAST::VARIABLE){
-                st.insertINT(fp->ident);
-                string name = st.getName(fp->ident);
+            st.insertINT(fp->ident);
+            string name = st.getName(fp->ident);
 
-                ks.alloc(name);
-                ks.store(var, name);
-            // }else{
-                
-            //     vector<int> len;
-            //     vector<int> padding_len;
-            //     padding_len.push_back(-1);
-
-            //     fp->getIndex(len);
-            //     for(int l : len) padding_len.push_back(l);
-                
-            //     st.insertArray(fp->ident, padding_len, SysYType::SYSY_ARRAY);
-            //     string name = st.getName(fp->ident);
-
-            //     ks.alloc(name, "*" + ks.getArrayType(len));
-            //     ks.store(var, name);
-            // }
+            ks.alloc(name);
+            ks.store(var, name);
         }
     }
 
-    // 具体内容交给block
+    // block处理函数内容
     if(func_params != nullptr){
         block->Dump(false);
     }else{
@@ -220,23 +151,8 @@ void FuncDefAST::Dump() const {
 }
 
 string FuncFParamAST::Dump() const{
-    ScopeHelper scope("FuncFParamAST");
-    // if(tag == VARIABLE){
-        return "i32";
-    // }
-    // string ans = "i32";
-    // for(auto &ce: const_exps){
-    //     ans = "[" + ans + ", " + to_string(ce->getValue()) + "]";
-    // }
-    // return "*" + ans;
-}
-
-void FuncFParamAST::getIndex(std::vector<int> &len){
-    len.clear();
-    for(auto &ce: const_exps){
-        len.push_back(ce->getValue());
-    }
-    return;
+    ScopeHelper scope("FuncFParamAST", ident);
+    return "i32";
 }
 
 void BlockAST::Dump(bool new_symbol_tb) const {
@@ -281,7 +197,6 @@ void StmtAST::Dump() const {
     }());
     if(!bc.alive()) return;
     if(tag == RETURN){
-        // bc.finish()写在这里不对！
         if(exp){
             string ret_name = exp->Dump();
             ks.ret(ret_name);
@@ -377,56 +292,18 @@ void VarDeclAST::Dump() const {
 void BTypeAST::Dump() const{
     ScopeHelper scope("BTypeAST", "i32");
     if(tag == BTypeAST::INT){
-        ks.append("i32");
+        ks.append(": i32");
     }
 }
 
 void ConstDefAST::Dump(bool is_global) const{
     ScopeHelper scope("ConstDefAST", ident);
-    // if(tag == ARRAY){
-    //     DumpArray(is_global);
-    //     return;
-    // }
     int v = const_init_val->getValue();
     st.insertINTCONST(ident, v);
 }
 
-// void ConstDefAST::DumpArray(bool is_global) const{
-    
-
-//     vector<int> len;
-//     for(auto &ce : const_exps){
-//         len.push_back(ce->getValue());
-//     }
-//     st.insertArray(ident, len,SysYType::SYSY_ARRAY_CONST);
-//     string name = st.getName(ident);
-//     string array_type = ks.getArrayType(len);
-
-//     int tot_len = 1;
-//     for(auto i : len) tot_len *= i;
-//     string *init = new string[tot_len];
-//     for(int i = 0; i < tot_len; ++i)
-//         init[i] = "0";
-    
-//     const_init_val->getInitVal(init, len);
-
-//     if(is_global){
-//         // Global Const Array
-//         ks.globalAllocArray(name, array_type, ks.getInitList(init, len));
-//     } else {
-//         // Local Const Array
-//         ks.alloc(name, array_type);
-//         initArray(name, init, len);
-//     }
-//     return;
-// }
-
 void VarDefAST::Dump(bool is_global) const{
     ScopeHelper scope("VarDefAST", ident);
-    // if(tag == ARRAY){
-    //     DumpArray(is_global);
-    //     return;
-    // }
     st.insertINT(ident);
     string name = st.getName(ident);
     if(is_global){
@@ -446,198 +323,38 @@ void VarDefAST::Dump(bool is_global) const{
     return;
 }
 
-// void VarDefAST::DumpArray(bool is_global) const {
-//     vector<int> len;
-//     for(auto &ce : const_exps){
-//         len.push_back(ce->getValue());
-//     }
-
-//     st.insertArray(ident, len, SysYType::SYSY_ARRAY);
-
-//     string name = st.getName(ident);
-//     string array_type = ks.getArrayType(len);
-    
-//     int tot_len = 1;
-//     for(auto i : len) tot_len *= i;
-//     string *init = new string[tot_len];
-//     for(int i = 0; i < tot_len; ++i)
-//         init[i] = "0";
-
-//     if(is_global){
-//         if(init_val != nullptr){
-//             init_val->getInitVal(init, len, true);
-//         }
-//         ks.globalAllocArray(name, array_type, ks.getInitList(init, len));
-//     } else {
-//         ks.alloc(name, array_type);
-//         if(init_val == nullptr) 
-//             return;
-//         init_val->getInitVal(init, len, false);
-
-//         initArray(name, init, len);
-//     }
-//     return;
-// }
-
 string InitValAST::Dump() const{
     return exp->Dump();
 }
-
-// void InitValAST::getInitVal(std::string *ptr, const std::vector<int> &len, bool is_global) const{
-//     int n = len.size();
-//     vector<int> width(n);
-//     width[n - 1] = len[n - 1];
-//     for(int i = n - 2; i >= 0; --i){
-//         width[i] = width[i + 1] * len[i];
-//     }
-//     int i = 0;  // 指向下一步要填写的内存位置
-//     for(auto &init_val : inits){
-//         if(init_val->tag == EXP){
-//             if(is_global){
-//                 ptr[i++] = to_string(init_val->exp->getValue());
-//             } else{
-//                 ptr[i++] = init_val->Dump();
-//             }
-//         } else {
-//             assert(n > 1);  // 对一维数组初始化不可能再套一个Aggregate{{}}
-//             int j = n - 1;
-//             if(i == 0){
-//                 j = 1;
-//             } else{
-//                 j = n - 1;
-//                 for(; j >= 0; --j){
-//                     if(i % width[j] != 0)
-//                         break;
-//                 }
-//                 assert(j < n - 1); // 保证整除最后一维
-//                 ++j;    // j 指向最大的可除的维度
-//             }
-//             init_val->getInitVal(
-//                 ptr + i, 
-//                 vector<int>(len.begin() + j, len.end())
-//                 );
-//             i += width[j];
-//         }
-//         if(i >= width[0]) break;
-//     }
-// }
 
 int ConstInitValAST::getValue(){
     return const_exp->getValue();
 }
 
-// 对ptr指向的区域初始化，所指区域的数组类型由len规定
-// void ConstInitValAST::getInitVal(std::string *ptr, const std::vector<int> &len) const{
-//     int n = len.size();
-//     vector<int> width(n);
-//     width[n - 1] = len[n - 1];
-//     for(int i = n - 2; i >= 0; --i){
-//         width[i] = width[i + 1] * len[i];
-//     }
-//     int i = 0;  // 指向下一步要填写的内存位置
-//     for(auto &init_val : inits){
-//         if(init_val->tag == CONST_EXP){
-//             ptr[i++] = to_string(init_val->getValue());
-//         } else {
-//             assert(n > 1);  // 对一维数组初始化不可能再套一个Aggregate{{}}
-//             int j = n - 1;
-//             if(i == 0){
-//                 j = 1;
-//             } else{
-//                 j = n - 1;
-//                 for(; j >= 0; --j){
-//                     if(i % width[j] != 0)
-//                         break;
-//                 }
-//                 assert(j < n - 1); // 保证整除最后一维
-//                 ++j;    // j 指向最大的可除的维度
-//             }
-//             init_val->getInitVal(
-//                 ptr + i, 
-//                 vector<int>(len.begin() + j, len.end())
-//                 );
-//             i += width[j];
-//         }
-//         if(i >= width[0]) break;
-//     }
-// }
-
 string LValAST::Dump(bool dump_ptr)const{
     ScopeHelper scope("LValAST", ident);
-    // if(tag == VARIABLE){
-        // Hint: a single a ident be a array address
-        SysYType *ty = st.getType(ident);
-        if(ty->ty == SysYType::SYSY_INT_CONST)
-            return to_string(st.getValue(ident));
-        else if(ty->ty == SysYType::SYSY_INT){
-            if(dump_ptr == false){
-                string tmp = st.getTmpName();
-                ks.load(tmp, st.getName(ident));
-                return tmp;
-            } else {
-                return st.getName(ident);
-            }
-        } else {
-            // func(ident)
-            if(ty->value == -1){
-                string tmp = st.getTmpName();
-                ks.load(tmp, st.getName(ident));
-                return tmp;
-            }
+    SysYType *ty = st.getType(ident);
+    if(ty->ty == SysYType::SYSY_INT_CONST)
+        return to_string(st.getValue(ident));
+    else if(ty->ty == SysYType::SYSY_INT){
+        if(dump_ptr == false){
             string tmp = st.getTmpName();
-            ks.getelemptr(tmp, st.getName(ident), "0");
+            ks.load(tmp, st.getName(ident));
+            return tmp;
+        } else {
+            return st.getName(ident);
+        }
+    } else {
+        // func(ident)
+        if(ty->value == -1){
+            string tmp = st.getTmpName();
+            ks.load(tmp, st.getName(ident));
             return tmp;
         }
-    // } else {
-    //     vector<string> index;
-    //     vector<int> len;
-
-    //     for(auto &e: exps){
-    //         index.push_back(e->Dump());
-    //     }
-
-    //     SysYType *ty = st.getType(ident);
-    //     ty->getArrayType(len);
-
-    //     // hint: len可以是-1开头的，说明这个数组是函数中使用的参数
-    //     // 如 a[-1][3][2],表明a是参数 a[][3][2], 即 *[3][2].
-    //     // 此时第一步不能用getelemptr，而应该getptr
-
-    //     string name = st.getName(ident);
-    //     string tmp;
-    //     if(len.size() != 0 && len[0] == -1){
-    //         vector<int> sublen(len.begin() + 1, len.end());
-    //         string tmp_val = st.getTmpName();
-    //         ks.load(tmp_val, name);
-    //         string first_indexed = st.getTmpName();
-    //         ks.getptr(first_indexed, tmp_val, index[0]);
-    //         if(index.size() > 1){
-    //             tmp = getElemPtr(
-    //                 first_indexed,
-    //                 vector<string>(
-    //                     index.begin() + 1, index.end()
-    //                 )
-    //             );
-    //         } else {
-    //             tmp = first_indexed;
-    //         }
-            
-    //     } else {
-    //         tmp = getElemPtr(name, index);
-    //     }   
-        
-
-    //     if(index.size() < len.size()){
-    //         // 一定是作为函数参数即实参使用，因为下标不完整
-    //         string real_param = st.getTmpName();
-    //         ks.getelemptr(real_param, tmp, "0");
-    //         return real_param;
-    //     }
-    //     if(dump_ptr) return tmp;
-    //     string tmp2 = st.getTmpName();
-    //     ks.load(tmp2, tmp);
-    //     return tmp2;
-    // }
+        string tmp = st.getTmpName();
+        ks.getelemptr(tmp, st.getName(ident), "0");
+        return tmp;
+    }
 }
 
 int LValAST::getValue(){
@@ -662,12 +379,18 @@ int ExpAST::getValue(){
 string PrimaryExpAST::Dump() const{
     switch (tag)
     {
-        case PARENTHESES:
+        case PARENTHESES: {
+            ScopeHelper scope("PrimaryExpAST");
             return exp->Dump();
-        case NUMBER:
+        }
+        case NUMBER: {
+            ScopeHelper scope("PrimaryExpAST", to_string(number));
             return to_string(number);
-        case LVAL:
+        }
+        case LVAL: {
+            ScopeHelper scope("PrimaryExpAST");
             return lval->Dump();
+        }
     }
     return "";
 }
@@ -675,12 +398,18 @@ string PrimaryExpAST::Dump() const{
 int PrimaryExpAST::getValue(){
     switch (tag)
     {
-        case PARENTHESES:
+        case PARENTHESES: {
+            ScopeHelper scope("PrimaryExpAST");
             return exp->getValue();
-        case NUMBER:
+        }
+        case NUMBER: {
+            ScopeHelper scope("PrimaryExpAST", to_string(number));
             return number;
-        case LVAL:
+        }
+        case LVAL: {
+            ScopeHelper scope("PrimaryExpAST");
             return lval->getValue();
+        }
     }
     return -1;  // make g++ happy
 }

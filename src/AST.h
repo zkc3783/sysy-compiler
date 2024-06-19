@@ -26,8 +26,6 @@ class InitValAST;
 class ConstInitValAST;
 class LValAST;
 class ConstExpAST;
-class ArrayIndexConstExpList;
-class ArrayIndexExpList;
 
 // Expression
 class ExpAST;
@@ -77,22 +75,18 @@ public:
     void Dump() const;
 };
 
-class FuncFParamsAST : public BaseAST {     // 函数参数列表
+class FuncFParamsAST : public BaseAST {     // 定义函数参数列表
 public:
     std::vector<std::unique_ptr<FuncFParamAST>> func_f_params;
     void Dump() const;
 };
 
 
-class FuncFParamAST : public BaseAST {      // 函数参数
+class FuncFParamAST : public BaseAST {      // 定义函数参数
 public:
-    enum TAG { VARIABLE, ARRAY };
-    TAG tag;
     std::unique_ptr<BTypeAST> btype;
     std::string ident;
-    std::vector<std::unique_ptr<ConstExpAST>> const_exps;   // a[][3]
     std::string Dump() const; // 返回参数类型，如i32, *[i32, 4]
-    void getIndex(std::vector<int> &len);
 };
 
 
@@ -121,11 +115,17 @@ public:
     void Dump() const;
 };
 
-// StmtAST OtherStmt && IF 
 class StmtAST : public BaseAST {
 public:
+    enum TAG {RETURN, ASSIGN, BLOCK, EXP, WHILE, BREAK, CONTINUE, IF};
+    TAG tag; //语句可能是以上的某一种，是哪种就用下面的所需要的类
+    std::unique_ptr<ExpAST> exp;
+    std::unique_ptr<LValAST> lval;
+    std::unique_ptr<BlockAST> block;
+    std::unique_ptr<StmtAST> stmt;
+    std::unique_ptr<StmtAST> if_stmt;
+    std::unique_ptr<StmtAST> else_stmt;
 /*
-cmh
     StmtAST::Dump 方法处理不同类型的语句格式，每种语句类型都对应一个格式：
     RETURN语句: "return [Exp];"
         - 如果有表达式exp，则处理 exp->Dump()。
@@ -153,14 +153,6 @@ cmh
         - 条件表达式 exp->Dump()，然后是 if_stmt->Dump()，
           可选的 else_stmt->Dump() 处理else部分。
 */
-    enum TAG {RETURN, ASSIGN, BLOCK, EXP, WHILE, BREAK, CONTINUE, IF};
-    TAG tag; //语句可能是以上的某一种，是哪种就用下面的所需要的类
-    std::unique_ptr<ExpAST> exp;
-    std::unique_ptr<LValAST> lval;
-    std::unique_ptr<BlockAST> block;
-    std::unique_ptr<StmtAST> stmt;
-    std::unique_ptr<StmtAST> if_stmt;
-    std::unique_ptr<StmtAST> else_stmt;
     void Dump() const;
 };
 
@@ -187,54 +179,35 @@ public:
 
 class ConstDefAST : public BaseAST {
 public:
-    enum TAG { VARIABLE, ARRAY };
-    TAG tag;
     std::string ident;
-    std::vector<std::unique_ptr<ConstExpAST>> const_exps;   // size !=0, Array
     std::unique_ptr<ConstInitValAST> const_init_val;
     void Dump(bool is_global = false) const;
-    void DumpArray(bool is_global = false) const;
 };
 
 class VarDefAST: public BaseAST {
 public:
-    enum TAG { VARIABLE, ARRAY };
-    TAG tag;
     std::string ident;
-    std::vector<std::unique_ptr<ConstExpAST>> const_exps;   // size != 0, Array
     std::unique_ptr<InitValAST> init_val;   // nullptr implies no init_val
     void Dump(bool is_global = false) const;
-    void DumpArray(bool is_global = false) const;
 };
 
 class InitValAST : public BaseAST{
 public:
-    enum TAG { EXP, INIT_LIST};
-    TAG tag;
     std::unique_ptr<ExpAST> exp;
-    std::vector<std::unique_ptr<InitValAST>> inits; // can be 0, 1, 2,....
     std::string Dump() const;
-    void getInitVal(std::string *ptr, const std::vector<int> &len, bool is_global = false) const;
 };
 
 class ConstInitValAST : public BaseAST {
 public:
-    enum TAG { CONST_EXP, CONST_INIT_LIST };
-    TAG tag;
     std::unique_ptr<ConstExpAST> const_exp;
-    std::vector<std::unique_ptr<ConstInitValAST>> inits;    // size can be 0, 1, ...
     // 表达式求值，计算结果放在pi所指的int内存地址
     int getValue();
-    void getInitVal(std::string *ptr, const std::vector<int> &len) const;
 };
 
 
 class LValAST : public BaseAST {
 public:
-    enum TAG { VARIABLE, ARRAY };
-    TAG tag;
     std::string ident;
-    std::vector<std::unique_ptr<ExpAST>> exps;      // exps.size() != 0 implies ARRAY
     std::string Dump(bool dump_ptr = false) const;   // 默认返回的是i32而非指针。
     int getValue();
 };
@@ -245,35 +218,12 @@ public:
     int getValue();
 };
 
-class ArrayIndexConstExpList : public BaseAST {
-public:
-    std::vector<std::unique_ptr<ConstExpAST>> const_exps;
-};
-
-class ArrayIndexExpList : public BaseAST {
-public:
-    std::vector<std::unique_ptr<ExpAST>> exps;
-};
-
-
-class ConstExpListAST: public BaseAST {
-public:
-    std::vector<std::unique_ptr<ConstExpAST>> const_exps;
-};
-
-class ExpListAST: public BaseAST {
-public:
-    std::vector<std::unique_ptr<ExpAST>> exps;
-    int getValue();
-};
-
-
 // Exp
 class ExpAST : public BaseAST {
 public:
     std::unique_ptr<LOrExpAST> l_or_exp;
-    std::string Dump() const;
-    int getValue();
+    std::string Dump() const;//生成计算表达式的值的中间代码，返回存储该值的寄存器
+    int getValue(); //直接返回表达式的值
 };
 
 class PrimaryExpAST : public BaseAST { //表达式成员，可以是另一个表达式exp，一个数number，或一个量lval
@@ -376,6 +326,6 @@ public:
 
 class FuncRParamsAST : public BaseAST {
 public:
-    std::vector<std::unique_ptr<ExpAST>> exps;
+    std::vector<std::unique_ptr<ExpAST>> exps;  // 函数表达式的参数
     std::string Dump() const;
 };
