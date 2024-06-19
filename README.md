@@ -141,7 +141,7 @@ clang o文件路径 -L$CDE_LIBRARY_PATH/native -lsysy -o 可执行文件路径
 
 - **栈式符号表管理**: 编译过程中使用栈式符号表来管理变量和作用域，保证了名字解析的正确性和高效性。每当进入一个新的作用域，符号表就增加一层；每结束一个作用域，就将其弹出。
 
-- **ScopeHelper 工具**: 为了更好地调试和理解编译器的行为，我们实现了一个名为 ScopeHelper 的工具，该工具通过利用构造函数和析构函数在控制台输出抽象语法树的结构，从而帮助开发者和学习者可视化理解程序结构。此工具在每个作用域的进入和退出时输出对应的缩进，清晰地展示了程序的嵌套层次。
+- **语法树结构生成**: 为了更好地理解语法树的结构，我们实现了一个名为 ScopeHelper 的工具，该工具通过利用构造函数和析构函数在控制台生成抽象语法树的结构，从而帮助开发者和学习者可视化理解程序结构。此工具在每个作用域的进入和退出时输出对应的缩进，清晰地展示了程序的嵌套层次。
 
 此外，编译器的所有环境均运行于**中科方德操作系统**上，充分利用了其稳定和高效的系统环境来优化编译过程。需要注意的是，后端部分的实现基于现有的开源项目，我们主要集中在前端的开发和优化上，以保证 SysY 代码能被准确地转换为有效的中间表示。
 
@@ -329,24 +329,53 @@ public:
 };
 ```
 
-#### 2.2.4 局部变量地址分配器
+#### 2.2.4 语法树结构生成器
 
-在`visit.cpp`中定义了局部变量地址分配的类`LocalVarAllocator`。其中最主要的数据结构是`unordered_map<koopa_raw_value_t, size_t> var_addr`，记录了 Koopa IR 中某些指令（i.e.具有计算结果的指令，`alloc`指令等)的结果作为局部变量在栈中的地址（偏移量，从零计）。
+在编译过程中，有效地可视化和调试语法树结构是极为重要的。为了支持这一需求，我们实现了一个名为 `ScopeHelper` 的辅助类。该类的主要目的是在进入和退出编译器的各个作用域时自动记录和显示层次结构，帮助开发者清晰地看到程序的嵌套层次和作用域边界。
+
+`ScopeHelper` 通过使用构造函数和析构函数在控制台输出括号表示的作用域，从而提供一种结构化的方式来可视化语法树的节点。它在每个节点的开始打印一个开括号，节点的结束打印一个闭括号，并根据当前的嵌套深度自动调整缩进。此外，如果提供了节点名称，它还会在类型名后输出，使得输出更加具体和有用。
+
+使用 `ScopeHelper` 可以非常直观地生成编译器前端从源代码生成的抽象语法树结构，极大地方便了开发和调试过程。
 
 ```cpp
-class LocalVarAllocator{
+class ScopeHelper {
+private:
+    static int depth;  // 静态变量，用于记录当前嵌套层数
+    std::string type;
+    std::string name;
+
+    // 辅助函数，用于生成当前层次的缩进
+    std::string getIndent() const {
+        return std::string(depth * 2, ' ');  // 每层缩进两个空格
+    }
+
 public:
-    unordered_map<koopa_raw_value_t, size_t> var_addr;    // 记录每个value的偏移量
-    // R: 函数中有call则为4，用于保存ra寄存器
-    // A: 该函数调用的函数中，参数最多的那个，需要额外分配的第9,10……个参数的空间
-    // S: 为这个函数的局部变量分配的栈空间
-    size_t R, A, S;
-    size_t delta;   // 16字节对齐后的栈帧长度
-    
-    // 返回存储指令计算结果的局部变量的地址
-    size_t getOffset(koopa_raw_value_t value);
-    /* 省略了一些成员函数 */
+    ScopeHelper(const std::string& type, const std::string& name = "") : type(type), name(name) {
+        std::cout << getIndent();  // 输出当前缩进
+        std::cout << type;  // 输出类型名
+        if (!name.empty()) {
+            std::cout << " (" << name << ")";  // 如果变量名不为空，则输出变量名
+        }
+        std::cout << "{" << std::endl;
+        depth++;  // 进入新的层级
+    }
+    ~ScopeHelper() {
+        depth--;  // 退出当前层级
+        std::cout << getIndent() << "}" << std::endl;
+    }
 };
+
+// 初始化静态成员变量
+int ScopeHelper::depth = 0;
+```
+
+以 CompUnitAST 节点为例，可以在 Dump() 方法的开头定义 ScopeHelper 类。如下所示：
+
+```cpp
+void CompUnitAST::Dump()const {
+    ScopeHelper scope("CompUnitAST");
+    // 函数体
+}
 ```
 
 ### 2.3 主要算法设计考虑
@@ -365,71 +394,6 @@ public:
 
 `visit.cpp`中全局变量定义`RiscvString rvs;`用于管理RISC-V字符串。其中`Visit`是一个重载的函数，完成对程序、全局变量、函数、基本块、指令等的访问，从高层往低层进行，直至访问到指令，即`koopa_raw_value_t`。指令的访问在`void Visit(const koopa_raw_value_t &value)`函数中进行。针对Koopa IR中不同的指令，将调用相应的`Visit`函数，将其翻译为RISC-V汇编，加入到`rvs`中。如果该指令有计算结果，将其存入`t0`寄存器，再将`t0`的内容存到该指令的计算结果对应的局部变量的地址(`lva.getOffset`获得)。
 
-```cpp
-void Visit(const koopa_raw_value_t &value) {
-    // 根据指令类型判断后续需要如何访问
-    const auto &kind = value->kind;
-
-    switch (kind.tag) {
-        case KOOPA_RVT_RETURN:
-            // 访问 return 指令
-            Visit(kind.data.ret);
-            break;
-        case KOOPA_RVT_INTEGER:
-            // "Control flow should never reach here."
-            break;
-        case KOOPA_RVT_BINARY:
-            // 访问二元运算
-            Visit(kind.data.binary);
-            rvs.store("t0", "sp", lva.getOffset(value));
-            break;
-        case KOOPA_RVT_ALLOC:
-            // 访问栈分配指令，啥都不用管
-            break;
-        case KOOPA_RVT_LOAD:
-            // 加载指令
-            Visit(kind.data.load);
-            rvs.store("t0", "sp", lva.getOffset(value));
-            break;
-        case KOOPA_RVT_STORE:
-            // 存储指令
-            Visit(kind.data.store);
-            break;
-        case KOOPA_RVT_BRANCH:
-            // 条件分支指令
-            Visit(kind.data.branch);
-            break;
-        case KOOPA_RVT_JUMP:
-            // 无条件跳转指令
-            Visit(kind.data.jump);
-            break;
-        case KOOPA_RVT_CALL:
-            // 访问函数调用
-            Visit(kind.data.call);
-            if(kind.data.call.callee->ty->data.function.ret->tag == KOOPA_RTT_INT32){
-                rvs.store("a0", "sp", lva.getOffset(value));
-            }
-            break;
-        case KOOPA_RVT_GLOBAL_ALLOC:
-            // 访问全局变量
-            VisitGlobalVar(value);
-            break;
-        case KOOPA_RVT_GET_ELEM_PTR:
-            // 访问getelemptr指令
-            Visit(kind.data.get_elem_ptr);
-            rvs.store("t0", "sp", lva.getOffset(value));
-            break;
-        case KOOPA_RVT_GET_PTR:
-            Visit(kind.data.get_ptr);
-            rvs.store("t0", "sp", lva.getOffset(value));
-        default:
-            // 其他类型暂时遇不到
-            break;
-    }
-}
-```
-
-
 
 ## 3 编译器实现
 
@@ -444,7 +408,6 @@ void Visit(const koopa_raw_value_t &value) {
 #### 3.2.1 常量、变量、作用域
 
 ##### 3.2.1.1 前端实现
-
 
 首先是用于 Koopa IR 命名管理的类 `NameTable`。
 `getTmpName`函数返回一个临时符号，依次返回`%0`,`%1`等标号。`getName`函数的输入是一个字符串，即SysY语言中的**标识符(identifier)**，返回一个字符串作为其在Koopa IR中的名字。例如，输入标识符`x`，可能返回`@x_0`，`@x_1`，以此类推。而`getLabelName`与此类似，用于生成Koopa IR中基本块的标签，例如`%then_1`。
