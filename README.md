@@ -203,6 +203,7 @@ class SysYType{
 NameManager 处理重复的变量名
 
 Symbol表 表示一个表项 包括标识符 ident、名称 name
+
 SymbolTable 表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
 SymbolTableStack 用来处理符号表栈
 
