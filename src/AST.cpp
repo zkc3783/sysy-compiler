@@ -80,7 +80,7 @@ void CompUnitAST::DumpGlobalVar() const{
 
 void FuncDefAST::Dump() const {
     ScopeHelper scope("FuncDefAST", ident);
-    st.resetNameManager();
+    st.resetNameTable();
     
     // 函数名加到符号表
     st.insertFUNC(ident, btype->tag == BTypeAST::INT ? SysYType::SYSY_FUNC_INT : SysYType::SYSY_FUNC_VOID);
