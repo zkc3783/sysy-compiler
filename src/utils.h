@@ -49,14 +49,17 @@ public:
         koopa_str += "  store " + from + ", " + to + '\n';
     }
 
+    // Branch ::= "br" Value "," SYMBOL "," SYMBOL;
     void br(const std::string &v, const std::string &then_s, const std::string &else_s){
         koopa_str += "  br " + v + ", " + then_s + ", " + else_s + '\n';
     }
     
+    // Jump ::= "jump" SYMBOL;
     void jump(const std::string &label){
         koopa_str += "  jump " + label + '\n';
     }
 
+    // FunCall ::= "call" SYMBOL "(" [Value {"," Value}] ")";
     void call(const std::string &to, const std::string &func,const std::vector<std::string>& params){
         if(to.length()){
             koopa_str += "  " + to + " = ";
@@ -82,10 +85,6 @@ public:
         koopa_str += "  " + to + " = getelemptr " + from + ", " + i + "\n";
     }
 
-    void getptr(const std::string& to, const std::string &from, const std::string& i){
-        koopa_str += "  " + to + " = getptr " + from + ", " + i + "\n";
-    }
-
     void declLibFunc(){
         this->append("decl @getint(): i32\n");
         this->append("decl @getch(): i32\n");
@@ -97,40 +96,6 @@ public:
         this->append("decl @stoptime()\n");
         this->append("\n");
     }
-
-    std::string getArrayType(const std::vector<int> &w){
-        // int a[w0][w1]...[wn-1]
-        std::string ans = "i32";
-        for(int i = w.size() - 1; i >= 0; --i){
-            ans = "[" + ans + ", " + std::to_string(w[i]) + "]";
-        }
-        return ans;
-    }
-
-    // 数组内容在ptr所指的内存区域，数组类型由len描述. ptr[i]为常量，或者是KoopaIR中的名字
-    std::string getInitList(std::string *ptr, const std::vector<int> &len){
-        std::string ret = "{";
-        if(len.size() == 1){
-            int n = len[0];
-            ret += ptr[0];
-            for(int i = 1; i < n; ++i){
-                ret += ", " + ptr[i];
-            }
-        } else {
-            int n = len[0], width = 1;
-            std::vector<int> sublen(len.begin() + 1, len.end());
-            for(auto iter = len.end() - 1; iter != len.begin(); --iter)
-                width *= *iter;
-            ret += getInitList(ptr, sublen);
-            for(int i = 1; i < n; ++i){
-                ret += ", " + getInitList(ptr + width * i, sublen);
-            }
-        }
-        ret += "}";
-        return ret;
-    }
-
-    
 
     const char * c_str(){return koopa_str.c_str();}
 };
