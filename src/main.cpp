@@ -16,7 +16,7 @@ extern FILE *yyin;
 extern int yyparse(unique_ptr<BaseAST> &ast);
 
 extern RiscvString rvs;
-extern KoopaString ks;
+extern KoopaIR ki;
 
 int main(int argc, const char *argv[]) {
     // 解析命令行参数. 测试脚本/评测平台要求你的编译器能接收如下参数:
@@ -52,7 +52,7 @@ int main(int argc, const char *argv[]) {
     ast.reset((CompUnitAST *)base_ast.release());
     ast->Dump();
     
-    const char *str = ks.c_str();
+    const char *str = ki.c_str();
 
     if(!strcmp(mode,"-koopa")){
         fout << str; 

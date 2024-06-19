@@ -10,7 +10,7 @@
 #include "utils.h"
 using namespace std;
 
-KoopaString ks;         // Koopa 字符串
+KoopaIR ki;             // Koopa 中间代码
 SymbolTableStack st;    // 符号表
 BlockController bc;     // 通过一个bool值管理代码块的活动状态（遇到break，continue, return）
                         // set设为1，finish设为0，alive检查值
@@ -52,7 +52,7 @@ void CompUnitAST::Dump()const {
     st.alloc(); // 全局作用域
     this->DumpGlobalVar();  // 处理全局变量  
     // 库函数声明
-    ks.declLibFunc();
+    ki.declLibFunc();
     st.insertFUNC("getint", SysYType::SYSY_FUNC_INT);
     st.insertFUNC("getch", SysYType::SYSY_FUNC_INT);
     st.insertFUNC("getarray", SysYType::SYSY_FUNC_INT);
@@ -81,7 +81,7 @@ void CompUnitAST::DumpGlobalVar() const{
            }
         }
     }
-    ks.append("\n");
+    ki.append("\n");
 }
 
 void FuncDefAST::Dump() const {
@@ -92,7 +92,7 @@ void FuncDefAST::Dump() const {
     st.insertFUNC(ident, btype->tag == BTypeAST::INT ? SysYType::SYSY_FUNC_INT : SysYType::SYSY_FUNC_VOID);
 
     // fun @main(): i32 {
-    ks.append("fun " + st.getName(ident) + "(");
+    ki.append("fun " + st.getName(ident) + "(");
 
     // 分配函数内层符号表
     st.alloc();
@@ -104,22 +104,22 @@ void FuncDefAST::Dump() const {
         int n = fps.size();
         // 在大表中给出ident，查找它的name，并将其保存
         var_names.push_back(st.getVarName(fps[0]->ident));
-        ks.append(var_names.back() + ": ");
-        ks.append(fps[0]->Dump());
+        ki.append(var_names.back() + ": ");
+        ki.append(fps[0]->Dump());
         for(int i = 1; i < n; ++i){
-            ks.append(", ");
+            ki.append(", ");
             var_names.push_back(st.getVarName(fps[i]->ident));
-            ks.append(var_names.back() + ": ");
-            ks.append(fps[i]->Dump());
+            ki.append(var_names.back() + ": ");
+            ki.append(fps[i]->Dump());
         }
     }
-    ks.append(")");
+    ki.append(")");
     btype->Dump();  // 打印函数类型名 ([: i32])
-    ks.append(" {\n");
+    ki.append(" {\n");
 
     // 进入Block
     bc.set();
-    ks.label("%entry");
+    ki.label("%entry");
 
     // 把参数加载到变量中
     if(func_params != nullptr){
@@ -130,8 +130,8 @@ void FuncDefAST::Dump() const {
             st.insertINT(fp->ident);
             string name = st.getName(fp->ident);    // 在小符号表中新开一个name，进行一次store操作
 
-            ks.alloc(name);
-            ks.store(var, name);
+            ki.alloc(name);
+            ki.store(var, name);
         }
     }
 
@@ -144,11 +144,11 @@ void FuncDefAST::Dump() const {
     // 特判空块
     if(bc.alive()){
         if(btype->tag == BTypeAST::INT)
-            ks.ret("0");
+            ki.ret("0");
         else
-            ks.ret("");
+            ki.ret("");
     }
-    ks.append("}\n\n");
+    ki.append("}\n\n");
 }
 
 string FuncFParamAST::Dump() const{
@@ -201,15 +201,15 @@ void StmtAST::Dump() const {
     if(tag == RETURN){
         if(exp){
             string ret_name = exp->Dump();
-            ks.ret(ret_name);
+            ki.ret(ret_name);
         } else{
-            ks.ret("");
+            ki.ret("");
         }
         bc.finish();                 // 当前IR的block设为不活跃
     } else if(tag == ASSIGN){
         string val = exp->Dump();
         string to = lval->Dump(true);
-        ks.store(val, to);
+        ki.store(val, to);
     } else if(tag == BLOCK){
         block->Dump();
     } else if(tag == EXP){
@@ -221,54 +221,54 @@ void StmtAST::Dump() const {
         
         wst.append(while_entry, while_body, while_end);
 
-        ks.jump(while_entry);
+        ki.jump(while_entry);
 
         bc.set();
-        ks.label(while_entry);      // WHILE 的中间代码
+        ki.label(while_entry);      // WHILE 的中间代码
         string cond = exp->Dump();
-        ks.br(cond, while_body, while_end);
+        ki.br(cond, while_body, while_end);
 
         bc.set();
-        ks.label(while_body);       // DO 的中间代码
+        ki.label(while_body);       // DO 的中间代码
         stmt->Dump();
         if(bc.alive())
-            ks.jump(while_entry);
+            ki.jump(while_entry);
 
         bc.set();
-        ks.label(while_end);        // ENDWHILE 的中间代码
+        ki.label(while_end);        // ENDWHILE 的中间代码
         wst.quit();                 // 该while处理已结束，退栈
     } else if(tag == BREAK){
-        ks.jump(wst.getEndName());  // 跳转到while_end
+        ki.jump(wst.getEndName());  // 跳转到while_end
         bc.finish();                // 当前IR的block设为不活跃
     } else if(tag == CONTINUE){
-        ks.jump(wst.getEntryName());// 跳转到while_entry
+        ki.jump(wst.getEntryName());// 跳转到while_entry
         bc.finish();                // 当前IR的block设为不活跃
     } else if(tag == IF){
         string s = exp->Dump();
         string t = st.getLabelName("then");
         string e = st.getLabelName("else");
         string j = st.getLabelName("end");
-        ks.br(s, t, else_stmt == nullptr ? j : e);
+        ki.br(s, t, else_stmt == nullptr ? j : e);
 
         // if
         bc.set();
-        ks.label(t);                // THEN 的中间代码
+        ki.label(t);                // THEN 的中间代码
         if_stmt->Dump();
         if(bc.alive())
-            ks.jump(j);
+            ki.jump(j);
 
         // else
         if(else_stmt != nullptr){
             bc.set();
-            ks.label(e);            // ELSE 的中间代码
+            ki.label(e);            // ELSE 的中间代码
             else_stmt->Dump();
             if(bc.alive())
-                ks.jump(j);
+                ki.jump(j);
 
         }
         // end
         bc.set();
-        ks.label(j);                // ENDIF 的中间代码
+        ki.label(j);                // ENDIF 的中间代码
     }
     return;
 }
@@ -292,7 +292,7 @@ void VarDeclAST::Dump() const {
 void BTypeAST::Dump() const{
     ScopeHelper scope("BTypeAST", "i32");
     if(tag == BTypeAST::INT){
-        ks.append(": i32");
+        ki.append(": i32");
     }
 }
 
@@ -308,16 +308,16 @@ void VarDefAST::Dump(bool is_global) const{
     string name = st.getName(ident);
     if(is_global){
         if(init_val == nullptr){
-            ks.globalAllocINT(name);
+            ki.globalAllocINT(name);
         } else {
             int v = init_val->exp->getValue();
-            ks.globalAllocINT(name, to_string(v));
+            ki.globalAllocINT(name, to_string(v));
         }
     } else {
-        ks.alloc(name);
+        ki.alloc(name);
         if(init_val != nullptr){
             string s = init_val->Dump();
-            ks.store(s, name);
+            ki.store(s, name);
         }
     }
     return;
@@ -339,7 +339,7 @@ string LValAST::Dump(bool dump_ptr)const{
     else if(ty->ty == SysYType::SYSY_INT){
         if(dump_ptr == false){
             string tmp = st.getTmpName();
-            ks.load(tmp, st.getName(ident));
+            ki.load(tmp, st.getName(ident));
             return tmp;
         } else {
             return st.getName(ident);
@@ -348,11 +348,11 @@ string LValAST::Dump(bool dump_ptr)const{
         // func(ident)
         if(ty->value == -1){
             string tmp = st.getTmpName();
-            ks.load(tmp, st.getName(ident));
+            ki.load(tmp, st.getName(ident));
             return tmp;
         }
         string tmp = st.getTmpName();
-        ks.getelemptr(tmp, st.getName(ident), "0");
+        ki.getelemptr(tmp, st.getName(ident), "0");
         return tmp;
     }
 }
@@ -422,7 +422,7 @@ string UnaryExpAST::Dump() const{
 
         string op = unary_op == '-' ? "sub" : "eq";
         string c = st.getTmpName();
-        ks.binary(op, c, "0", b);
+        ki.binary(op, c, "0", b);
         return c;
     }else{
         // Func_Call
@@ -438,7 +438,7 @@ string UnaryExpAST::Dump() const{
                 par.push_back(func_params->exps[i]->Dump());
             }
         }
-        ks.call(tmp, st.getName(ident), par);
+        ki.call(tmp, st.getName(ident), par);
         return tmp;
     }
 }
@@ -462,7 +462,7 @@ string MulExpAST::Dump() const{
     string op = mul_op == '*' ? "mul":(mul_op == '/' ?"div" : "mod");
     
     c = st.getTmpName();
-    ks.binary(op, c, a, b);
+    ki.binary(op, c, a, b);
     return c;
 }
 
@@ -485,7 +485,7 @@ string AddExpAST::Dump() const{
     string op = add_op == '+' ? "add" : "sub";
     
     c = st.getTmpName();
-    ks.binary(op, c, a, b);
+    ki.binary(op, c, a, b);
     return c;
 }
 
@@ -502,7 +502,7 @@ string RelExpAST::Dump() const {
     string a = rel_exp_1->Dump(), b = add_exp_2->Dump();
     string op = rel_op[1] == '=' ? (rel_op[0] == '<' ? "le" : "ge") : (rel_op[0] == '<' ? "lt" : "gt");
     string dest = st.getTmpName();
-    ks.binary(op, dest, a, b);
+    ki.binary(op, dest, a, b);
     return dest;
 }
 
@@ -522,7 +522,7 @@ string EqExpAST::Dump() const {
     string a = eq_exp_1->Dump(), b =rel_exp_2->Dump();
     string op = eq_op == '=' ? "eq" : "ne";
     string dest = st.getTmpName();
-    ks.binary(op, dest, a, b);
+    ki.binary(op, dest, a, b);
     return dest;
 }
 
@@ -538,27 +538,27 @@ string LAndExpAST::Dump() const {
     
     // 修改支持短路逻辑
     string result = st.getVarName("SCRES");
-    ks.alloc(result);
-    ks.store("0", result);
+    ki.alloc(result);
+    ki.store("0", result);
 
     string lhs = l_and_exp_1->Dump();
     string then_s = st.getLabelName("then_sc");
     string end_s = st.getLabelName("end_sc");
 
-    ks.br(lhs, then_s, end_s);
+    ki.br(lhs, then_s, end_s);
 
     bc.set();
-    ks.label(then_s);
+    ki.label(then_s);
     string rhs = eq_exp_2->Dump();
     string tmp = st.getTmpName();
-    ks.binary("ne", tmp, rhs, "0");
-    ks.store(tmp, result);
-    ks.jump(end_s);
+    ki.binary("ne", tmp, rhs, "0");
+    ki.store(tmp, result);
+    ki.jump(end_s);
 
     bc.set();
-    ks.label(end_s);
+    ki.label(end_s);
     string ret = st.getTmpName();
-    ks.load(ret, result);
+    ki.load(ret, result);
     return ret;
 }
 
@@ -574,28 +574,28 @@ string LOrExpAST::Dump() const {
 
     // 修改支持短路逻辑
     string result = st.getVarName("SCRES");
-    ks.alloc(result);
-    ks.store("1", result);
+    ki.alloc(result);
+    ki.store("1", result);
 
     string lhs = l_or_exp_1->Dump();
 
     string then_s = st.getLabelName("then_sc");
     string end_s = st.getLabelName("end_sc");
 
-    ks.br(lhs, end_s, then_s);
+    ki.br(lhs, end_s, then_s);
 
     bc.set();
-    ks.label(then_s);
+    ki.label(then_s);
     string rhs = l_and_exp_2->Dump();
     string tmp = st.getTmpName();
-    ks.binary("ne", tmp, rhs, "0");
-    ks.store(tmp, result);
-    ks.jump(end_s);
+    ki.binary("ne", tmp, rhs, "0");
+    ki.store(tmp, result);
+    ki.jump(end_s);
 
     bc.set();
-    ks.label(end_s);
+    ki.label(end_s);
     string ret = st.getTmpName();
-    ks.load(ret, result);
+    ki.load(ret, result);
     return ret;
 }
 

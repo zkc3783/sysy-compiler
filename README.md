@@ -122,12 +122,12 @@ build/compiler -riscv SysY文件路径 -o RISC-V文件路径
 
 ### 1.2 主要特点
 
-+ **两层中间表示**: 上层的中间表示是抽象语法树，下层的中间表示是 Koopa IR。实际经过词法分析和语法分析，先得到抽象语法树，之后再通过遍历抽象语法树生成Koopa IR（调用抽象语法树结点的Dump函数）。方便起见，我们把从 SysY 到 Koopa IR 的部分称为编译器的**前端**，而把从 Koopa IR 到目标代码的部分称为编译器的**后端**。
+- **两层中间表示**: 上层的中间表示是抽象语法树，下层的中间表示是 Koopa IR。实际经过词法分析和语法分析，先得到抽象语法树，之后再通过遍历抽象语法树生成Koopa IR（调用抽象语法树结点的Dump函数）。方便起见，我们把从 SysY 到 Koopa IR 的部分称为编译器的**前端**，而把从 Koopa IR 到目标代码的部分称为编译器的**后端**。
 
-+ **前后端低耦合**: 编译器的前端将生成的正确的 Koopa IR 传递给后端，并没有共享别的数据。
-+ **前端维护栈式的符号表**：每进入SysY作用域，栈符号表生长一层；每结束一个作用域，退栈。将 SysY 源程序中的变量、类型等信息保存到符号表，并通过`NameManager`模块保证生成 Koopa IR时，同名的不同作用域下的变量，被分配不同的**名字**(Koopa IR中的具名变量，如`@n`)。
-+ **所有变量局部变量都保存在栈中**: 出于简单起见的实现，没有寄存器分配。
-+ **后端扫描函数中的指令完成局部变量分配**：后端的代码生成大体以函数为单位。对一个函数生成代码，要先扫描一遍其指令，利用`LocalVarAllocator`模块，完成局部变量的地址分配(i.e. 每条指令的返回结果在栈中的偏移量)。
+- **前后端低耦合**: 编译器的前端将生成的正确的 Koopa IR 传递给后端，并没有共享别的数据。
+- **前端维护栈式的符号表**：每进入SysY作用域，栈符号表生长一层；每结束一个作用域，退栈。将 SysY 源程序中的变量、类型等信息保存到符号表，并通过`NameTable`模块保证生成 Koopa IR时，同名的不同作用域下的变量，被分配不同的**名字**(Koopa IR中的具名变量，如`@n`)。
+- **所有变量局部变量都保存在栈中**: 出于简单起见的实现，没有寄存器分配。
+- **后端扫描函数中的指令完成局部变量分配**：后端的代码生成大体以函数为单位。对一个函数生成代码，要先扫描一遍其指令，利用`LocalVarAllocator`模块，完成局部变量的地址分配(i.e. 每条指令的返回结果在栈中的偏移量)。
 
 ## 2 编译器设计
 
@@ -135,16 +135,16 @@ build/compiler -riscv SysY文件路径 -o RISC-V文件路径
 
 编译器主要分成如下四大模块：
 
-+ **词法分析模块**: 通过词法分析，将SysY源程序转换为token流。(源代码中`sysy.l`)
-+ **语法分析模块**: 通过语法分析，得到`AST.h`中定义的抽象语法树。(源代码中`sysy.y`)
-+ **IR生成模块**: 遍历抽象语法树，进行语义分析，得到 Koopa IR 中间表示。(源代码中`AST.[h|cpp]`)
-+ **目标代码生成模块**: 扫描Koopa IR，将其转换为RISC-V代码。(源代码中`visit.[h|cpp]`)
+- **词法分析模块**: 通过词法分析，将SysY源程序转换为token流。(源代码中`sysy.l`)
+- **语法分析模块**: 通过语法分析，得到`AST.h`中定义的抽象语法树。(源代码中`sysy.y`)
+- **IR生成模块**: 遍历抽象语法树，进行语义分析，得到 Koopa IR 中间表示。(源代码中`AST.[h|cpp]`)
+- **目标代码生成模块**: 扫描Koopa IR，将其转换为RISC-V代码。(源代码中`visit.[h|cpp]`)
 
 模块之间的数据流图如下。
 
 ![模块图](pic/模块图.jpg)
 
-除此以外,还有一些辅助的模块，如`Symbol.[h|cpp]`中定义了类型、符号表相关的类；`utils.h`中定义了一些工具类，例如管理 Koopa IR 的`KoopaString`模块。
+除此以外,还有一些辅助的模块，如`Symbol.[h|cpp]`中定义了类型、符号表相关的类；`utils.h`中定义了一些工具类，例如管理 Koopa IR 的`KoopaIR`模块。
 
 ### 2.2 主要数据结构
 
@@ -212,7 +212,7 @@ class SysYType{
 #### 2.2.3 符号表
 
 主要涉及：`Symbol`、`SymbolTable`和`SymbolTableStack`
-NameManager 处理重复的变量名
+NameTable 处理重复的变量名
 
 Symbol表 表示一个表项 包括标识符 ident、名称 name
 
@@ -221,12 +221,12 @@ SymbolTableStack 用来处理符号表栈
 
 NameManager用来处理重复的变量名
 ```cpp
-class NameManager{
+class NameTable{
 private:
     int cnt;
     std::unordered_map<std::string, int> no;
 public:
-    NameManager():cnt(0){}
+    NameTable():cnt(0){}
     void reset();
     std::string getTmpName(); // 生成一个新的变量名
     std::string getName(const std::string &s); // @ 
@@ -275,13 +275,13 @@ public:
 };
 ```
 
-`SymbolTableStack`是`SymbolTable`组成的栈，同时用命名管理器`NameManager`处理重名变量
+`SymbolTableStack`是`SymbolTable`组成的栈，同时用命名管理器`NameTable`处理重名变量
 
 ```cpp
 class SymbolTableStack{
 private:
     std::deque<std::unique_ptr<SymbolTable>> sym_tb_st;
-    NameManager nm;
+    NameTable nt;
 public:
     const int UNKNOWN = -1;
     void alloc();// 在栈顶分配一个新的符号表
@@ -334,7 +334,7 @@ public:
 
 #### 2.3.2 Koopa IR 生成
 
-`AST.cpp`管理Koopa IR字符串。从根节点`CompUnitAST`开始，遍历抽象语法树，调用每个抽象语法树结点的`Dump`函数，产生 Koopa IR 加入到`KoopaString ks`之中。
+`AST.cpp`管理Koopa IR字符串。从根节点`CompUnitAST`开始，遍历抽象语法树，调用每个抽象语法树结点的`Dump`函数，产生 Koopa IR 加入到`KoopaIR ki`之中。
 
 #### 2.3.3 目标代码生成
 
@@ -421,16 +421,16 @@ void Visit(const koopa_raw_value_t &value) {
 ##### 3.2.1.1 前端实现
 
 
-首先是用于 Koopa IR 命名管理的类 `NameManager`。
+首先是用于 Koopa IR 命名管理的类 `NameTable`。
 `getTmpName`函数返回一个临时符号，依次返回`%0`,`%1`等标号。`getName`函数的输入是一个字符串，即SysY语言中的**标识符(identifier)**，返回一个字符串作为其在Koopa IR中的名字。例如，输入标识符`x`，可能返回`@x_0`，`@x_1`，以此类推。而`getLabelName`与此类似，用于生成Koopa IR中基本块的标签，例如`%then_1`。
 
 ```cpp
-class NameManager{
+class NameTable{
 private:
     int cnt;
     std::unordered_map<std::string, int> no;
 public:
-    NameManager():cnt(0){}
+    NameTable():cnt(0){}
     void reset();
     std::string getTmpName(); // 生成一个新的变量名
     std::string getName(const std::string &s); // @ 
@@ -438,14 +438,14 @@ public:
 };
 ```
 
-其次是栈式的符号表`SymbolTable`。它最重要的两个成员变量，一是封装了命名管理器` NameManager nm`，二是符号表的栈`std::deque<std::unique_ptr<SymbolTable>> sym_tb_st`。该类有两个函数`alloc`、`quit`，分别对应进入新的作用域时压栈、退出作用域时弹栈。此外，还有一系列负责插入的函数、负责查找的函数，以及`getTmpName`、`getLabelName`、`getVarName`三个向外提供的接口。
+其次是栈式的符号表`SymbolTable`。它最重要的两个成员变量，一是封装了命名表` NameTable nt`，二是符号表的栈`std::deque<std::unique_ptr<SymbolTable>> sym_tb_st`。该类有两个函数`alloc`、`quit`，分别对应进入新的作用域时压栈、退出作用域时弹栈。此外，还有一系列负责插入的函数、负责查找的函数，以及`getTmpName`、`getLabelName`、`getVarName`三个向外提供的接口。
 
 ```cpp
 
 class SymbolTableStack{
 private:
     std::deque<std::unique_ptr<SymbolTable>> sym_tb_st;
-    NameManager nm;
+    NameTable nt;
 public:
     const int UNKNOWN = -1;
     void alloc();// 在栈顶分配一个新的符号表
@@ -520,15 +520,15 @@ std::string SymbolTableStack::getName(const std::string &ident){
 }
 // 查找符号名
 std::string SymbolTableStack::getTmpName(){
-    return nm.getTmpName();
+    return nt.getTmpName();
 }
 // 临时变量名
 std::string SymbolTableStack::getLabelName(const std::string &label_ident){
-    return nm.getLabelName(label_ident);
+    return nt.getLabelName(label_ident);
 }
 // 标签名
 std::string SymbolTableStack::getVarName(const std::string& var){
-    return nm.getName(var);
+    return nt.getName(var);
 }
 // 变量名
 ```
@@ -612,7 +612,7 @@ string LValAST::Dump(bool dump_ptr)const{
         else if(ty->ty == SysYType::SYSY_INT){
             if(dump_ptr == false){
                 string tmp = st.getTmpName();
-                ks.load(tmp, st.getName(ident));
+                ki.load(tmp, st.getName(ident));
                 return tmp;
             } else {
                 return st.getName(ident);
@@ -626,14 +626,14 @@ string LValAST::Dump(bool dump_ptr)const{
 }
 ```
 
-处理赋值语句，如`x = m + n`，在`StmtAST`里完成。如下，`exp`是`ExpAST`类型，通过`Dump`获得右值（数值或者存放值的临时名字）并放入`val`中；`lval`是左值，通过`Dump`设定`dump_ptr = true`，获得存储单元的地址，并用将`val`放入该地址（i.e. `ks.store`)。
+处理赋值语句，如`x = m + n`，在`StmtAST`里完成。如下，`exp`是`ExpAST`类型，通过`Dump`获得右值（数值或者存放值的临时名字）并放入`val`中；`lval`是左值，通过`Dump`设定`dump_ptr = true`，获得存储单元的地址，并用将`val`放入该地址（i.e. `ki.store`)。
 
 ```cpp
 void StmtAST::Dump() const {
     if(tag == ASSIGN){ // 赋值语句
         string val = exp->Dump();
         string to = lval->Dump(true);
-        ks.store(val, to);
+        ki.store(val, to);
     } else /* 其他语句 */
     return;
 }
@@ -804,28 +804,28 @@ string LOrExpAST::Dump() const {
     if(tag == L_AND_EXP) return l_and_exp->Dump();
 
     string result = st.getVarName("SCRES");
-    ks.alloc(result);
-    ks.store("1", result);
+    ki.alloc(result);
+    ki.store("1", result);
 
     string lhs = l_or_exp_1->Dump();
 
     string then_s = st.getLabelName("then_sc");
     string end_s = st.getLabelName("end_sc");
 
-    ks.br(lhs, end_s, then_s);
+    ki.br(lhs, end_s, then_s);
 
     bc.set();
-    ks.label(then_s);
+    ki.label(then_s);
     string rhs = l_and_exp_2->Dump();
     string tmp = st.getTmpName();
-    ks.binary("ne", tmp, rhs, "0");
-    ks.store(tmp, result);
-    ks.jump(end_s);
+    ki.binary("ne", tmp, rhs, "0");
+    ki.store(tmp, result);
+    ki.jump(end_s);
 
     bc.set();
-    ks.label(end_s);
+    ki.label(end_s);
     string ret = st.getTmpName();
-    ks.load(ret, result);
+    ki.load(ret, result);
     return ret;
 }
 ```
@@ -860,8 +860,8 @@ void FuncDefAST::Dump() const {
                 st.insertINT(fp->ident);
                 string name = st.getName(fp->ident);
 
-                ks.alloc(name);
-                ks.store(var, name);
+                ki.alloc(name);
+                ki.store(var, name);
             }else /* 处理数组参数 */
         }
     }
@@ -1036,7 +1036,7 @@ void VarDefAST::DumpArray(bool is_global) const {
     st.insertArray(ident, len, SysYType::SYSY_ARRAY);
 
     string name = st.getName(ident);
-    string array_type = ks.getArrayType(len);
+    string array_type = ki.getArrayType(len);
     
     int tot_len = 1;
     for(auto i : len) tot_len *= i;
@@ -1048,9 +1048,9 @@ void VarDefAST::DumpArray(bool is_global) const {
         if(init_val != nullptr){
             init_val->getInitVal(init, len, true);
         }
-        ks.globalAllocArray(name, array_type, ks.getInitList(init, len));
+        ki.globalAllocArray(name, array_type, ki.getInitList(init, len));
     } else {
-        ks.alloc(name, array_type);
+        ki.alloc(name, array_type);
         if(init_val == nullptr) 
             return;
         init_val->getInitVal(init, len, false);

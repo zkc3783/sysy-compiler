@@ -1,17 +1,16 @@
 #include "Symbol.h"
 #include <iostream>
 using namespace std;
-// zyq 
 
-void NameManager::reset(){  // name map的初始化
+void NameTable::reset(){  // name map的初始化
     cnt = 0;
 }
 
-std::string NameManager::getTmpName(){ // 生成一个新的变量名
+std::string NameTable::getTmpName(){ // 生成一个新的变量名
     return "%" + std::to_string(cnt++);
 }
 
-std::string NameManager::getName(const std::string &s){ // 标签名 + @ 的字符（变量）
+std::string NameTable::getName(const std::string &s){ // 标签名 + @ 的字符（变量）
     auto i = no.find(s);
     if(i == no.end()){
         no.insert(make_pair(s, 1)); // map中没有当前变量名，插入这个变量，返回0
@@ -19,7 +18,7 @@ std::string NameManager::getName(const std::string &s){ // 标签名 + @ 的字�
     }
     return "@" + s + "_"  + std::to_string(i->second++); // 否则返回计数器，并且计数器++
 }
-std::string NameManager::getLabelName(const std::string &s){ // 标签名 + % 的字符（标签），同上
+std::string NameTable::getLabelName(const std::string &s){ // 标签名 + % 的字符（标签），同上
     auto i = no.find(s);
     if(i == no.end()){
         no.insert(make_pair(s, 1));
@@ -120,25 +119,25 @@ void SymbolTableStack::quit(){
 }
 // 重置名字管理器
 void SymbolTableStack::resetNameManager(){
-    nm.reset();
+    nt.reset();
 }
 // 插入一个符号
 void SymbolTableStack::insert(Symbol *symbol){
     sym_tb_st.back()->insert(symbol);
 }
-// 在当前作用域（栈顶的符号表）中插入一个符号，给定符号标识符、类型和初始值。符号表中的符号名字由 NameManager 生成
+// 在当前作用域（栈顶的符号表）中插入一个符号，给定符号标识符、类型和初始值。符号表中的符号名字由 NameTable 生成
 void SymbolTableStack::insert(const std::string &ident, SysYType::TYPE _type, int value){
-    string name = nm.getName(ident);
+    string name = nt.getName(ident);
     sym_tb_st.back()->insert(ident, name, _type, value);
 }
 // 插入int
 void SymbolTableStack::insertINT(const std::string &ident){
-    string name = nm.getName(ident);
+    string name = nt.getName(ident);
     sym_tb_st.back()->insertINT(ident, name);
 }
 // 插入const int
 void SymbolTableStack::insertINTCONST(const std::string &ident, int value){
-    string name = nm.getName(ident);
+    string name = nt.getName(ident);
     sym_tb_st.back()->insertINTCONST(ident, name, value);
 }
 // 插入一个函数符号
@@ -185,13 +184,13 @@ std::string SymbolTableStack::getName(const std::string &ident){
 }
 // 临时变量名
 std::string SymbolTableStack::getTmpName(){
-    return nm.getTmpName();
+    return nt.getTmpName();
 }
 // 标签名
 std::string SymbolTableStack::getLabelName(const std::string &label_ident){
-    return nm.getLabelName(label_ident);
+    return nt.getLabelName(label_ident);
 }
 // 变量名
 std::string SymbolTableStack::getVarName(const std::string& var){
-    return nm.getName(var);
+    return nt.getName(var);
 }

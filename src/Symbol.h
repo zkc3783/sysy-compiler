@@ -4,19 +4,19 @@
 #include <vector>
 #include <queue>
 #include <memory>
-// zyq
+
 /*
-NameManager 处理重复的变量名
+NameTable 处理重复的变量名
 Symbol表 表示一个表项 包括标识符 ident、名称 name
 SymbolTable 表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
 SymbolTableStack 用来处理符号表栈 
 */
-class NameManager{
+class NameTable{
 private:
     int cnt;
     std::unordered_map<std::string, int> no;
 public:
-    NameManager():cnt(0){}
+    NameTable():cnt(0){}
     void reset();
     std::string getTmpName(); // 生成一个新的变量名
     std::string getName(const std::string &s); // @ 
@@ -78,7 +78,7 @@ public:
 class SymbolTableStack{
 private:
     std::deque<std::unique_ptr<SymbolTable>> sym_tb_st;
-    NameManager nm;
+    NameTable nt;
 public:
     const int UNKNOWN = -1;
     void alloc();// 在栈顶分配一个新的符号表
