@@ -235,7 +235,7 @@ public:
 };
 ```
 
-`SymbolTable`是一个符号表，是`Symbol`条目按照`ident`字段进行的索引。
+`SymbolTable`是一个符号表，是`Symbol`条目按照`ident`字段进行的索引
 
 ```cpp
 class SymbolTable{
@@ -263,7 +263,7 @@ public:
 };
 ```
 
-`SymbolTableStack`是`SymbolTable`组成的栈，同时用命名管理器`NameManager`处理重名变量，如下。每进入一个作用域，调用`alloc`压栈；而退出则调用`quit`弹栈。
+`SymbolTableStack`是`SymbolTable`组成的栈，同时用命名管理器`NameManager`处理重名变量
 
 ```cpp
 class SymbolTableStack{
