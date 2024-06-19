@@ -136,12 +136,12 @@ public:
     */
     enum TAG {RETURN, ASSIGN, BLOCK, EXP, WHILE, BREAK, CONTINUE, IF};
     TAG tag; //语句可能是以上的某一种，是哪种就用下面的哪种指针对应的类
-    std::unique_ptr<ExpAST> exp;
-    std::unique_ptr<LValAST> lval;
-    std::unique_ptr<BlockAST> block;
-    std::unique_ptr<StmtAST> stmt;
-    std::unique_ptr<StmtAST> if_stmt;
-    std::unique_ptr<StmtAST> else_stmt;
+    std::unique_ptr<ExpAST> exp;        // 表达式，比如 1 + 2 + a, 1 等
+    std::unique_ptr<LValAST> lval;      // 变量
+    std::unique_ptr<BlockAST> block;    // 大括号包裹的块
+    std::unique_ptr<StmtAST> stmt;      // while 的程序体
+    std::unique_ptr<StmtAST> if_stmt;   // then 的程序体
+    std::unique_ptr<StmtAST> else_stmt; // else 的程序体
     void Dump() const;
 };
 
