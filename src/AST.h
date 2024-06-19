@@ -93,14 +93,14 @@ public:
 // Block         ::= "{" {BlockItem} "}";
 class BlockAST : public BaseAST {       // 单入口单出口的基本块
 public:
-    std::vector<std::unique_ptr<BlockItemAST>> block_items; //基本块中有很多元素，vector装 zkc
+    std::vector<std::unique_ptr<BlockItemAST>> block_items; // 基本块中有很多元素，vector装
     void Dump(bool new_symbol_tb = true) const;
 };
 
 // BlockItem     ::= Decl | Stmt;
 class BlockItemAST : public BaseAST {   // 块中的一个元素
 public:
-    enum TAG {DECL, STMT};  //zkc 可以是常量变量定义（decl），或者语句（stmt）
+    enum TAG {DECL, STMT};  // 可以是常量变量定义（decl），或者语句（stmt）
     TAG tag;
     std::unique_ptr<DeclAST> decl;
     std::unique_ptr<StmtAST> stmt;
