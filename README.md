@@ -790,7 +790,129 @@ graph TD
 ### 5.3 语句
 
 ### 5.4 表达式
+表达式的解析通过一系列共同实现，这些类各司其职，依次调用（见图），实现形式类似递归。
 
+这些类中均包含`Dump`方法和`getValue`方法。`Dump`方法用于生成计算表达式的中间代码，并返回存储结果的变量名；
+`getValue`方法用于直接返回表达式的值。
+
+`ExpAST`类是表达式解析的入口类,其调用`LOrExpAST`类，令其开始分析语句。
+```cpp
+//AST.h
+class ExpAST : public BaseAST {
+public:
+    std::unique_ptr<LOrExpAST> l_or_exp;
+    // 生成计算表达式的值的中间代码，返回存储该值的寄存器
+    std::string Dump() const;
+    // 直接返回表达式的值
+    int getValue(); 
+};
+//AST.cpp
+string ExpAST::Dump() const {
+    ScopeHelper scope("ExpAST");
+    return l_or_exp->Dump();
+}
+int ExpAST::getValue(){
+    return l_or_exp->getValue();
+}
+```
+具体实现方面，这些类的逻辑类似递归：分析标签，若是本类所处理的关系则处理，否则调用下一个类进行处理。
+
+以处理或表达式的`LOrExpAST`类中的`Dump`方法和`getValue`方法为例，若其发现表达式为或表达式，则开始进行处理并返回对应内容。
+
+否则，返回下一个类`LAndExpAST`的`Dump`和`getValue`。
+
+
+```cpp
+// AST.h
+class LOrExpAST : public BaseAST { //处理或，否则给上层l_and_exp模块
+public:
+    enum TAG {L_AND_EXP, OP_L_OR_EXP};
+    TAG tag;
+    std::unique_ptr<LAndExpAST> l_and_exp;
+    std::unique_ptr<LOrExpAST> l_or_exp_1;
+    std::unique_ptr<LAndExpAST> l_and_exp_2;
+    std::string Dump() const;
+    int getValue();
+};
+//AST.cpp
+string LOrExpAST::Dump() const {
+    if(tag != L_AND_EXP) ScopeHelper scope("LOrExpAST");
+    if(tag == L_AND_EXP) return l_and_exp->Dump();
+
+    // 修改支持短路逻辑
+    string result = st.getVarName("SCRES");
+    ki.alloc(result);
+    ki.store("1", result);
+
+    string lhs = l_or_exp_1->Dump();
+
+    string then_s = st.getLabelName("then_sc");
+    string end_s = st.getLabelName("end_sc");
+
+    ki.br(lhs, end_s, then_s);
+
+    bc.set();
+    ki.label(then_s);
+    string rhs = l_and_exp_2->Dump();
+    string tmp = st.getTmpName();
+    ki.binary("ne", tmp, rhs, "0");
+    ki.store(tmp, result);
+    ki.jump(end_s);
+
+    bc.set();
+    ki.label(end_s);
+    string ret = st.getTmpName();
+    ki.load(ret, result);
+    return ret;
+}
+
+int LOrExpAST::getValue() {
+    if(tag == L_AND_EXP) return l_and_exp->getValue();
+    int a = l_or_exp_1->getValue(), b = l_and_exp_2->getValue();
+    return a || b;
+}
+```
+
+`LAndExpAST`类负责"&&"表达式。
+```cpp
+class LAndExpAST : public BaseAST  //处理与
+```
+`EqExpAST`类负责"=="和"!="表达式。
+```cpp
+class EqExpAST : public BaseAST //处理相等或不等
+```
+`RelExpAST`类负责大小比较"<", ">", "<=", 和">="表达式。
+```cpp
+class RelExpAST : public BaseAST  //处理大小比较
+```
+`AddExpAST`类负责加"+"和减"-"。
+```cpp
+class AddExpAST : public BaseAST  //处理加减
+```
+`MulExpAST`类负责乘"*", 除"/" 和取模"%"。
+```cpp
+class MulExpAST : public BaseAST  //处理乘,除,取模运算
+```
+`UnaryExpAST`类负责一元表达式，正号"+", 负号"-" 和非"!"。
+```cpp
+class UnaryExpAST : public BaseAST  //处理一元运算+,-,!
+```
+`PrimaryExpAST`类负责剩余情况的处理，即另一个表达式Ext，一个常数number，一个变量Lval。
+```cpp
+// PrimaryExp    ::= "(" Exp ")" | LVal | Number;
+class PrimaryExpAST : public BaseAST { 
+// 表达式成员，可以是另一个表达式exp，一个数number，或一个量lval
+public:
+    enum TAG { PARENTHESES, NUMBER, LVAL};
+    TAG tag;
+    std::unique_ptr<ExpAST> exp;
+    std::unique_ptr<LValAST> lval;
+    int number;
+    std::string Dump() const ;
+    int getValue();
+};
+
+```
 ### 5.5 函数
 
 
