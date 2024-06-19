@@ -102,6 +102,7 @@ void FuncDefAST::Dump() const {
     if(func_params != nullptr){
         auto &fps = func_params->func_f_params;
         int n = fps.size();
+        // 在大表中给出ident，查找它的name，并将其保存
         var_names.push_back(st.getVarName(fps[0]->ident));
         ks.append(var_names.back() + ": ");
         ks.append(fps[0]->Dump());
@@ -127,7 +128,7 @@ void FuncDefAST::Dump() const {
             string var = var_names[i++];
 
             st.insertINT(fp->ident);
-            string name = st.getName(fp->ident);    // 获取在
+            string name = st.getName(fp->ident);    // 在小符号表中新开一个name，进行一次store操作
 
             ks.alloc(name);
             ks.store(var, name);
