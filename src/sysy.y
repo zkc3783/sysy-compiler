@@ -432,12 +432,10 @@ VarDef
 InitVal
   : Exp{
     auto init_val = new InitValAST();
-    init_val->tag = InitValAST::EXP;
     init_val->exp.reset((ExpAST *)$1);
     $$ = init_val;
   } | '{' '}' {
     auto init_val = new InitValAST();
-    init_val->tag = InitValAST::INIT_LIST;
     $$ = init_val;
   } | '{' InitValList '}' {
     $$ = $2;
@@ -446,7 +444,6 @@ InitVal
 InitValList
   : InitVal {
     auto init_val = new InitValAST();
-    init_val->tag = InitValAST::INIT_LIST;
     $$ = init_val;
   } | InitValList ',' InitVal {
     auto init_val = (InitValAST *)$1;
@@ -457,12 +454,10 @@ InitValList
 ConstInitVal
   : ConstExp {
     auto const_init_val = new ConstInitValAST();
-    const_init_val->tag = ConstInitValAST::CONST_EXP;
     const_init_val->const_exp = unique_ptr<ConstExpAST>((ConstExpAST *)$1);
     $$ = const_init_val;
   } |'{' '}' {
     auto const_init_val = new ConstInitValAST();
-    const_init_val->tag = ConstInitValAST::CONST_INIT_LIST;
     $$ = const_init_val;
   } | '{' ConstInitValList '}' {
     $$ = $2;
@@ -472,7 +467,6 @@ ConstInitVal
 ConstInitValList
   : ConstInitVal {
     auto init_val = new ConstInitValAST();
-    init_val->tag = ConstInitValAST::CONST_INIT_LIST;
     $$ = init_val;
   } | ConstInitValList ',' ConstInitVal {
     auto init_val = (ConstInitValAST *)$1;

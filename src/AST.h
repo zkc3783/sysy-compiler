@@ -193,16 +193,12 @@ public:
 
 class InitValAST : public BaseAST{
 public:
-    enum TAG { EXP, INIT_LIST};
-    TAG tag;
     std::unique_ptr<ExpAST> exp;
     std::string Dump() const;
 };
 
 class ConstInitValAST : public BaseAST {
 public:
-    enum TAG { CONST_EXP, CONST_INIT_LIST };
-    TAG tag;
     std::unique_ptr<ConstExpAST> const_exp;
     // 表达式求值，计算结果放在pi所指的int内存地址
     int getValue();
