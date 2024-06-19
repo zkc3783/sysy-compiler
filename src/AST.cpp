@@ -12,9 +12,10 @@ using namespace std;
 
 KoopaString ks;         // Koopa 字符串
 SymbolTableStack st;    // 符号表
-BlockController bc;     // 通过一个bool值管理代码块的活动状态（例如遇到break，return）
+BlockController bc;     // 通过一个bool值管理代码块的活动状态（遇到break，continue, return）
                         // set设为1，finish设为0，alive检查值
 WhileStack wst;         // 用栈管理循环，记录入口、循环体和结束的标签
+                        // 用于break和continue
 
 class ScopeHelper {
 private:
@@ -81,7 +82,6 @@ void CompUnitAST::DumpGlobalVar() const{
         }
     }
     ks.append("\n");
-
 }
 
 void FuncDefAST::Dump() const {
@@ -94,11 +94,11 @@ void FuncDefAST::Dump() const {
     // fun @main(): i32 {
     ks.append("fun " + st.getName(ident) + "(");
 
-    // 提前进入到函数内的block，之后把参数load到变量中
+    // 分配函数内层符号表
     st.alloc();
-    vector<string> var_names;   //KoopaIR参数列表的名字
+    vector<string> var_names;   // KoopaIR参数列表的名字
     
-    // 打印函数变量名，并保存到var_names中
+    // 从符号表中获取KoopaIR变量名，并保存到var_names中
     if(func_params != nullptr){
         auto &fps = func_params->func_f_params;
         int n = fps.size();
@@ -113,7 +113,7 @@ void FuncDefAST::Dump() const {
         }
     }
     ks.append(")");
-    btype->Dump();
+    btype->Dump();  // 打印函数类型名 ([: i32])
     ks.append(" {\n");
 
     // 进入Block
@@ -127,7 +127,7 @@ void FuncDefAST::Dump() const {
             string var = var_names[i++];
 
             st.insertINT(fp->ident);
-            string name = st.getName(fp->ident);
+            string name = st.getName(fp->ident);    // 获取在
 
             ks.alloc(name);
             ks.store(var, name);
@@ -167,7 +167,8 @@ void BlockAST::Dump(bool new_symbol_tb) const {
         block_items[i]->Dump();
     }
     // out of this block
-    st.quit();
+    if(new_symbol_tb)
+        st.quit();  // 符号表退栈
 }
 
 void BlockItemAST::Dump() const{
@@ -203,7 +204,7 @@ void StmtAST::Dump() const {
         } else{
             ks.ret("");
         }
-        bc.finish();
+        bc.finish();                 // 当前IR的block设为不活跃
     } else if(tag == ASSIGN){
         string val = exp->Dump();
         string to = lval->Dump(true);
@@ -211,9 +212,7 @@ void StmtAST::Dump() const {
     } else if(tag == BLOCK){
         block->Dump();
     } else if(tag == EXP){
-        if(exp){
-            exp->Dump();
-        }
+        exp->Dump();
     } else if(tag == WHILE){
         string while_entry = st.getLabelName("while_entry");
         string while_body = st.getLabelName("while_body");
@@ -224,19 +223,19 @@ void StmtAST::Dump() const {
         ks.jump(while_entry);
 
         bc.set();
-        ks.label(while_entry);
+        ks.label(while_entry);      // WHILE 的中间代码
         string cond = exp->Dump();
         ks.br(cond, while_body, while_end);
 
         bc.set();
-        ks.label(while_body);
+        ks.label(while_body);       // DO 的中间代码
         stmt->Dump();
         if(bc.alive())
             ks.jump(while_entry);
 
         bc.set();
-        ks.label(while_end);
-        wst.quit(); // 该while处理已结束，退栈
+        ks.label(while_end);        // ENDWHILE 的中间代码
+        wst.quit();                 // 该while处理已结束，退栈
     } else if(tag == BREAK){
         ks.jump(wst.getEndName());  // 跳转到while_end
         bc.finish();                // 当前IR的block设为不活跃
@@ -250,17 +249,17 @@ void StmtAST::Dump() const {
         string j = st.getLabelName("end");
         ks.br(s, t, else_stmt == nullptr ? j : e);
 
-        // IF Stmt
+        // if
         bc.set();
-        ks.label(t);
+        ks.label(t);                // THEN 的中间代码
         if_stmt->Dump();
         if(bc.alive())
             ks.jump(j);
 
-        // else stmt
+        // else
         if(else_stmt != nullptr){
             bc.set();
-            ks.label(e);
+            ks.label(e);            // ELSE 的中间代码
             else_stmt->Dump();
             if(bc.alive())
                 ks.jump(j);
@@ -268,7 +267,7 @@ void StmtAST::Dump() const {
         }
         // end
         bc.set();
-        ks.label(j);
+        ks.label(j);                // ENDIF 的中间代码
     }
     return;
 }
@@ -361,7 +360,6 @@ int LValAST::getValue(){
     return st.getValue(ident);
 }
 
-
 int ConstExpAST::getValue(){
     return exp->getValue();
 }
@@ -374,7 +372,6 @@ string ExpAST::Dump() const {
 int ExpAST::getValue(){
     return l_or_exp->getValue();
 }
-
 
 string PrimaryExpAST::Dump() const{
     switch (tag)

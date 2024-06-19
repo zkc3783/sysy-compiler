@@ -78,7 +78,8 @@ class FuncFParamAST : public BaseAST {      // 定义函数参数
 public:
     std::unique_ptr<BTypeAST> btype;
     std::string ident;
-    std::string Dump() const; // 返回参数类型，即“i32”
+    // 返回参数类型，即“i32”
+    std::string Dump() const;
 };
 
 // Block         ::= "{" {BlockItem} "}";
@@ -215,11 +216,12 @@ public:
     int getValue();
 };
 
-// LVal          ::= IDENT {"[" Exp "]"};
+// LVal          ::= IDENT;
 class LValAST : public BaseAST {
 public:
     std::string ident;
-    std::string Dump(bool dump_ptr = false) const;   // 默认返回的是i32而非指针。
+    // false 时返回存有该值的临时变量（寄存器），true时返回KoopaIR变量名，默认为false
+    std::string Dump(bool dump_ptr = false) const;
     int getValue();
 };
 
@@ -234,8 +236,10 @@ public:
 class ExpAST : public BaseAST {
 public:
     std::unique_ptr<LOrExpAST> l_or_exp;
-    std::string Dump() const;// 生成计算表达式的值的中间代码，返回存储该值的寄存器
-    int getValue(); // 直接返回表达式的值
+    // 生成计算表达式的值的中间代码，返回存储该值的寄存器
+    std::string Dump() const;
+    // 直接返回表达式的值
+    int getValue(); 
 };
 
 // PrimaryExp    ::= "(" Exp ")" | LVal | Number;
