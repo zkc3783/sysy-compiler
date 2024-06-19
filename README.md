@@ -4,10 +4,10 @@
 
 | 成员姓名       | 责任区域   |
 |---------------|------------|
-| 陈铭豪         |  项目管理         |
-| 陈鸿远         |            |
-| 邹坤成         |            |
-| 祝永祺          |            |
+| 陈铭豪         |  项目管理，中间代码生成，语义分析，实验报告撰写    |
+| 陈鸿远         |  词法分析，语法分析，实验报告撰写  |
+| 邹坤成         |  环境配置，中间代码生成，实验报告撰写   |
+| 祝永祺         |  符号表处理，实验报告撰写    |
 
 ## 0 基础背景
 *参考文档* [北大编译实践在线文档](https://pku-minic.github.io/online-doc/#/misc-app-ref/sysy-spec)
@@ -1070,7 +1070,7 @@ public:
 
 在语句处理中，不同类型的语句需要生成相应的Koopa IR代码。下面分别介绍几种主要语句类型的中间代码生成方法（以下代码为示意代码）：
 
-##### 赋值语句 (ASSIGN)
+**赋值语句 (ASSIGN)**
 
 赋值语句将一个表达式的值赋给一个变量。生成的中间代码首先计算右侧表达式的值，然后将该值存储到左值对应的地址。
 
@@ -1082,7 +1082,7 @@ if (tag == ASSIGN) {
 }
 ```
 
-##### 代码块 (BLOCK)
+**代码块 (BLOCK)**
 
 代码块可能包含多个语句，需要逐个处理其中的每个语句。这通常涉及到递归地调用`Dump`方法。
 
@@ -1094,7 +1094,7 @@ if (tag == BLOCK) {
 }
 ```
 
-##### 表达式语句 (EXP)
+**表达式语句 (EXP)**
 
 表达式语句主要是执行一个表达式并丢弃其结果，常用于如函数调用这样的表达式。
 
@@ -1104,7 +1104,7 @@ if (tag == EXP) {
 }
 ```
 
-##### 条件语句 (IF)
+**条件语句 (IF)**
 
 条件语句根据表达式的结果选择执行两个不同的代码路径。生成的中间代码需要包括条件跳转。
 
@@ -1126,7 +1126,7 @@ if (tag == IF) {
 }
 ```
 
-##### 循环控制 (WHILE, BREAK, CONTINUE)
+**循环控制 (WHILE, BREAK, CONTINUE)**
 
 循环语句根据条件反复执行代码块，而`break`和`continue`用于从循环中跳出或跳至循环开始。
 
@@ -1160,7 +1160,7 @@ if (tag == CONTINUE) {
 }
 ```
 
-#### 返回语句 (RETURN)
+**返回语句 (RETURN)**
 
 返回语句将一个表达式的结果作为函数的返回值，或者标记函数的退出点。
 
@@ -1475,14 +1475,134 @@ void FuncDefAST::Dump() const {
 
 这种结构确保每个函数都正确地转换成中间表示（IR），这包括参数的处理和函数体内部的语句转换。对于函数的调用，`FuncRParamsAST`的`Dump`方法用于生成调用时传递的实际参数的代码，这有助于处理函数调用过程中的参数传递问题。
 
-## 6 目标代码生成
-鉴于Koopa IR已经是很结构化的中间代码，我们可以借助[Koopa的C++接口文档](https://github.com/BerkinChen/pku-compiler)提供的访问函数，递归遍历Koopa结构，直接实现对应koopa指令到RISC-V指令的映射，生成目标的RISC-V汇编代码。
+### 5.6 中间代码示例
 
-对于Koopa IR到可执行文件的转换，官方也提供了很好的koopa库的支持，通过如下命令行指令即可完成从koopa IR到可执行文件的转换：
+完成以上中间代码生成的实现后，我们可以对 5.1.3 可视化 提到的示例代码进行转换，以下是其对应的 KoopaIR 程序。
+
+```text
+global @gv_0 = alloc i32, 0
+
+decl @getint(): i32
+decl @getch(): i32
+decl @getarray(*i32): i32
+decl @putint(i32)
+decl @putch(i32)
+decl @putarray(i32, *i32)
+decl @starttime()
+decl @stoptime()
+
+fun @addgv(@n_0: i32): i32 {
+%entry:
+  @n_1 = alloc i32
+  store @n_0, @n_1
+  %0 = load @gv_0
+  %1 = load @n_1
+  %2 = add %0, %1
+  store %2, @gv_0
+  %3 = load @gv_0
+  ret %3
+}
+
+fun @pow(@x_0: i32, @y_0: i32): i32 {
+%entry:
+  @x_1 = alloc i32
+  store @x_0, @x_1
+  @y_1 = alloc i32
+  store @y_0, @y_1
+  @res_0 = alloc i32
+  store 1, @res_0
+  jump %while_entry_0
+%while_entry_0:
+  %0 = load @y_1
+  %1 = gt %0, 0
+  br %1, %while_body_0, %while_end_0
+%while_body_0:
+  %2 = load @res_0
+  %3 = load @x_1
+  %4 = mul %2, %3
+  store %4, @res_0
+  %5 = load @y_1
+  %6 = sub %5, 1
+  store %6, @y_1
+  jump %while_entry_0
+%while_end_0:
+  %7 = load @res_0
+  ret %7
+}
+
+fun @f(): i32 {
+%entry:
+  @a_0 = alloc i32
+  store 3, @a_0
+  jump %while_entry_1
+%while_entry_1:
+  br 1, %while_body_1, %while_end_1
+%while_body_1:
+  %0 = load @a_0
+  %1 = sub %0, 1
+  store %1, @a_0
+  %2 = load @a_0
+  %3 = le %2, 0
+  br %3, %then_0, %end_0
+%then_0:
+  jump %while_end_1
+%end_0:
+  jump %while_entry_1
+%while_end_1:
+  ret 0
+}
+
+fun @main(): i32 {
+%entry:
+  @x_2 = alloc i32
+  store 2, @x_2
+  @y_2 = alloc i32
+  store 3, @y_2
+  @c_0 = alloc i32
+  %1 = load @x_2
+  %2 = load @y_2
+  %0 = call @pow(%1, %2)
+  store %0, @c_0
+  %3 = load @c_0
+  %4 = eq %3, 8
+  br %4, %then_1, %end_1
+%then_1:
+  %5 = load @c_0
+  %6 = sub %5, 1
+  store %6, @c_0
+  jump %end_1
+%end_1:
+  %7 = load @c_0
+  %8 = ne %7, 8
+  br %8, %then_2, %end_2
+%then_2:
+  %9 = call @f()
+  jump %end_2
+%end_2:
+  ret 0
+}
+```
+
+## 6 目标代码生成
+
+鉴于 Koopa IR 已经是一个高度结构化的中间代码形式，我们可以利用在 [Koopa的C++接口文档](https://github.com/BerkinChen/pku-compiler) 提供的接口函数。这些函数支持递归遍历 Koopa IR 的结构，从而可以直接实现从 Koopa 指令到 RISC-V 指令的映射，进而生成目标的 RISC-V 汇编代码。
+
+为了将 Koopa IR 转换成可执行文件，Koopa 官方提供了完善的库支持。以下是将 Koopa IR 转换为可执行文件的命令行步骤（同1.1 基本功能）：
+
 ```shell
 koopac hello.koopa | llc --filetype=obj -o hello.o
 clang hello.o -L$CDE_LIBRARY_PATH/native -lsysy -o hello
 ./hello
 ```
+
+这一系列操作首先将 Koopa IR 编译成 LLVM IR，然后使用 LLVM 的 `llc` 工具将其转换为目标机器代码（这里是 RISC-V 架构的对象文件），最后通过 `clang` 进行链接，生成可执行文件。这个过程涉及的工具链确保了从高级语言到机器代码的无缝转换，极大地简化了编译和链接过程。
+
 ## 7 总结
 
+在这个SysY编译器设计与实现的项目中，我们从基础的编译器架构开始，逐步深入到各个编译阶段的详细实现，涵盖了从词法分析到中间代码生成的全过程。这个项目不仅加深了我们对编译原理的理解，也锻炼了我们将理论应用于实际的能力。
+
+在前端部分，我们成功实现了包括词法分析、语法分析、语义分析及中间代码生成等关键步骤。通过使用工具如Flex和Bison，我们能够有效地将源代码转换为AST，并进一步转换为Koopa IR，这一结构化的中间表示形式极大地简化了后续的代码生成过程。此外，我们在语义分析阶段通过构建和管理复杂的符号表来处理变量和函数的作用域，确保了语义的正确性和程序的健壮性。
+
+我们设计的中间代码生成部分特别注重保证生成的Koopa IR的准确性和优化。通过细致地设计AST节点类和相应的转换逻辑，我们能够生成高效且易于后端处理的中间代码。这些代码精确地描述了程序的逻辑结构和操作，为目标代码生成奠定了坚实的基础。
+
+通过本项目，我们不仅学习和实践了编译技术的各个方面，还提高了我们解决复杂软件工程问题的能力。这个经验不仅在技术上是一次质的飞跃，也在实际操作中加深了我们对编译原理的理解和应用。我们期待将这些知识应用于更广泛的领域，并在未来的学习和研究中继续探索编译技术的更多可能性。
