@@ -1292,14 +1292,14 @@ public:
 };
 ```
 
-- `btype`: 指明函数的返回类型，可以是基本类型如`int`或`void`。
-- `ident`: 函数名称。
-- `func_params`: 参数列表，包含多个参数的定义。
-- `block`: 函数体，由一系列语句和声明构成。
+- **`btype`**: 指明函数的返回类型，可以是基本类型如`int`或`void`。
+- **`ident`**: 函数名称。
+- **`func_params`**: 参数列表，包含多个参数的定义。
+- **`block`**: 函数体，由一系列语句和声明构成。
 
 #### 5.5.2 参数处理
 
-函数参数通过FuncFParamsAST类处理，该类维护一个参数列表，每个参数由FuncFParamAST类表示。
+函数参数通过`FuncFParamsAST`类处理，该类维护一个参数列表，每个参数由`FuncFParamAST`类表示。
 
 ```cpp
 class FuncFParamsAST : public BaseAST {
@@ -1320,6 +1320,16 @@ public:
 };
 ```
 
+此外，函数的调用参数由`FuncRParamsAST`类处理，它封装了传递给函数的实际参数。
+
+```cpp
+class FuncRParamsAST : public BaseAST {
+public:
+    std::vector<std::unique_ptr<ExpAST>> exps;  // 函数实际参数表达式列表
+    std::string Dump() const;
+};
+```
+
 #### 5.5.3 中间代码生成
 
 函数的中间代码生成包括为函数入口点生成标签、处理参数以及生成函数体的代码。`FuncDefAST`的`Dump`方法负责这些任务：
@@ -1334,7 +1344,7 @@ void FuncDefAST::Dump() const {
         auto &params = func_params->func_f_params;
         for (size_t i = 0; i < params.size(); i++) {
             if (i > 0) ki.append(", ");
-            ki.append(params[i]->Dump() + " " + params[i]->ident);
+            ki.append(params[i]->Dump() + ": i32");
         }
     }
     ki.append(")");
@@ -1351,9 +1361,11 @@ void FuncDefAST::Dump() const {
 }
 ```
 
-该方法确保每个函数都正确地转换成中间表示（IR），这包括参数的处理和函数体内部的语句转换。
+这种结构确保每个函数都正确地转换成中间表示（IR），这包括参数的处理和函数体内部的语句转换。对于函数的调用，`FuncRParamsAST`的`Dump`方法用于生成调用时传递的实际参数的代码，这有助于处理函数调用过程中的参数传递问题。
 
 ## 6 目标代码生成
+
+
 
 ## 7 总结
 
