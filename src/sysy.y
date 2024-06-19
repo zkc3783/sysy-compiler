@@ -49,6 +49,9 @@ using namespace std;
 // 而 parser 一旦解析完 CompUnit, 就说明所有的 token 都被解析了, 即解析结束了
 // 此时我们应该把 FuncDef 返回的结果收集起来, 作为 AST 传给调用 parser 的函数
 // $1 指代规则里第一个符号的返回值, 也就是 FuncDef 的返回值
+
+// 参考包含基本上全部文法的北大文档 https://pku-minic.github.io/online-doc/#/misc-app-ref/sysy-spec
+// 或者2022版https://cdn.hluvmiku.tech/download/sysy2022.pdf 多了float的类型 这里我们没有实现
 CompUnit
   : GlobalFuncVarList {
     auto comp_unit = unique_ptr<CompUnitAST>((CompUnitAST *)$1);
@@ -56,33 +59,34 @@ CompUnit
   }
   ;
 
+//  CompUnit      ::= [CompUnit] (Decl | FuncDef);  []代表0次或者1次 {}代表0次或者多次
 GlobalFuncVarList
   : DeclOrFuncDef {
     $$ = $1;
   } 
   ;
-  
+
+// 多个声明和函数定义时 使用新指针进行合并
 GlobalFuncVarList
   : GlobalFuncVarList DeclOrFuncDef{
     auto comp_unit = new CompUnitAST();
-    auto comp1 = unique_ptr<CompUnitAST>((CompUnitAST *)$1);
-    auto comp2 = unique_ptr<CompUnitAST>((CompUnitAST *)$2);
-    for(auto &f : comp1->func_defs){
+    auto comp_base = unique_ptr<CompUnitAST>((CompUnitAST *)$1);
+    auto comp_new = unique_ptr<CompUnitAST>((CompUnitAST *)$2);
+    for(auto &f : comp_base->func_defs){
         comp_unit->func_defs.emplace_back(f.release());
     }
-    for(auto &f : comp2->func_defs){
+    for(auto &f : comp_new->func_defs){
         comp_unit->func_defs.emplace_back(f.release());
     }
-    for(auto &d : comp1->decls){
+    for(auto &d : comp_base->decls){
         comp_unit->decls.emplace_back(d.release());
     }
-    for(auto &d : comp2->decls){
+    for(auto &d : comp_new->decls){
         comp_unit->decls.emplace_back(d.release());
     }
     $$ = comp_unit;
   } 
   ;
-
 
 DeclOrFuncDef
   : Decl {
@@ -100,7 +104,7 @@ DeclOrFuncDef
   } 
   ;
 
-// FuncDef ::= FuncType IDENT '(' ')' Block;
+// FuncDef ::= FuncType IDENT '(' ')' Block; 北大的例子
 // 我们这里可以直接写 '(' 和 ')', 因为之前在 lexer 里已经处理了单个字符的情况
 // 解析完成后, 把这些符号的结果收集起来, 然后拼成一个新的字符串, 作为结果返回
 // $$ 表示非终结符的返回值, 我们可以通过给这个符号赋值的方法来返回结果
@@ -121,7 +125,7 @@ FuncDef
   }
   ;
 
-// FuncDef ::= FuncType IDENT '(' FuncFParams ')' Block;
+// FuncDef ::= FuncType IDENT '(' FuncFParams ')' Block; FuncType BType
 FuncDef
   : BType IDENT '(' FuncFParams ')' Block {
     auto func_def = new FuncDefAST();
@@ -133,6 +137,7 @@ FuncDef
   }
   ;
 
+// FuncFParams   ::= FuncFParam {"," FuncFParam};
 FuncFParams
   : FuncFParam {
     auto func_params = new FuncFParamsAST();
@@ -150,6 +155,7 @@ FuncFParams
   }
   ;
 
+// FuncFParam    ::= BType IDENT ["[" "]" {"[" ConstExp "]"}];
 FuncFParam
   : BType IDENT {
     auto func_param = new FuncFParamAST();
@@ -164,6 +170,7 @@ FuncFParam
   }
   ;
 
+// Block         ::= "{" {BlockItem} "}";
 Block
   : '{' BlockItemList '}' {
     $$ = $2;
@@ -186,6 +193,7 @@ BlockItemList
   }
   ;
 
+// BlockItem     ::= Decl | Stmt;
 BlockItem
   : Decl {
     auto block_item = new BlockItemAST();
@@ -204,7 +212,7 @@ BlockItem
   }
   ;
 
-// LV4.1
+// Decl          ::= ConstDecl | VarDecl;
 Decl 
   : ConstDecl {
     auto decl = new DeclAST();
@@ -223,6 +231,14 @@ Decl
   }
   ;
 
+// Stmt          ::= LVal "=" Exp ";"
+//                 | [Exp] ";"
+//                 | Block
+//                 | "if" "(" Exp ")" Stmt ["else" Stmt]
+//                 | "while" "(" Exp ")" Stmt
+//                 | "break" ";"
+//                 | "continue" ";"
+//                 | "return" [Exp] ";";
 Stmt
   : MatchedStmt {
     $$ = $1;
@@ -231,6 +247,7 @@ Stmt
   }
   ;
 
+// MatchedStmt   ::= "if" "(" Exp ")" Stmt ["else" Stmt]
 MatchedStmt
   : IF '(' Exp ')' MatchedStmt ELSE MatchedStmt {
     auto mat_stmt = new StmtAST();
@@ -244,6 +261,7 @@ MatchedStmt
   }
   ;
 
+// OpenStmt      ::= "if" "(" Exp ")" MatchedStmt ["else" OpenStmt]
  OpenStmt
   : IF '(' Exp ')' Stmt {
     auto open_stmt = new StmtAST();
@@ -261,6 +279,7 @@ MatchedStmt
   }
   ;
 
+//                 | "return" [Exp] ";";
 OtherStmt
   : RETURN Exp ';' {
     auto stmt = new StmtAST();
@@ -278,6 +297,7 @@ OtherStmt
   }
   ;
 
+// Stmt          ::= LVal "=" Exp ";"
 OtherStmt 
   : LVal '=' Exp ';' {
     auto stmt = new StmtAST();
@@ -288,6 +308,7 @@ OtherStmt
   }
   ;
 
+//                 | [Exp] ";"
 OtherStmt
   : ';' {
     auto stmt = new StmtAST();
@@ -301,6 +322,7 @@ OtherStmt
   }
   ;
 
+//                 | Block
 OtherStmt
   : Block {
     auto stmt = new StmtAST();
@@ -310,6 +332,8 @@ OtherStmt
   }
   ;
 
+
+//                 | "while" "(" Exp ")" Stmt
 OtherStmt
   : WHILE '(' Exp ')' Stmt {
     auto stmt = new StmtAST();
@@ -320,6 +344,7 @@ OtherStmt
   }
   ;
 
+//                 | "break" ";"
 OtherStmt
   : BREAK ';' {
     auto stmt = new StmtAST();
@@ -328,6 +353,7 @@ OtherStmt
   }
   ;
 
+//                 | "continue" ";"
 OtherStmt
   : CONTINUE ';' {
     auto stmt = new StmtAST();
@@ -336,6 +362,7 @@ OtherStmt
   }
   ;
 
+// ConstDecl     ::= "const" BType ConstDef {"," ConstDef} ";";
 ConstDecl
   : CONST BType ConstDefList ';'{
     auto const_decl = (ConstDeclAST *)$3;
@@ -357,7 +384,6 @@ ConstDefList
   }
   ;
 
-
 ConstDefList
   : ConstDef {
     auto const_decl = new ConstDeclAST();
@@ -366,6 +392,7 @@ ConstDefList
   }
   ;
 
+// VarDecl       ::= BType VarDef {"," VarDef} ";";
 VarDecl
   : BType VarDefList ';' {
     auto var_decl = (VarDeclAST *)$2;
@@ -395,6 +422,7 @@ VarDefList
   }
   ;
 
+// BType         ::= "int"|"void";
 BType
   : INT {
     auto btype = new BTypeAST();
@@ -407,6 +435,7 @@ BType
   }
   ;
 
+// ConstDef      ::= IDENT {"[" ConstExp "]"} "=" ConstInitVal;
 ConstDef
   : IDENT '=' ConstInitVal {
     auto const_def = new ConstDefAST();
@@ -416,6 +445,8 @@ ConstDef
   }
   ;
 
+// VarDef        ::= IDENT {"[" ConstExp "]"}
+//                 | IDENT {"[" ConstExp "]"} "=" InitVal;
 VarDef
   : IDENT{
     auto var_def = new VarDefAST();
@@ -429,6 +460,7 @@ VarDef
   } 
   ;
 
+// InitVal       ::= Exp | "{" [InitVal {"," InitVal}] "}";
 InitVal
   : Exp{
     auto init_val = new InitValAST();
@@ -451,6 +483,7 @@ InitValList
   }
   ;
 
+// ConstInitVal  ::= ConstExp | "{" [ConstInitVal {"," ConstInitVal}] "}";
 ConstInitVal
   : ConstExp {
     auto const_init_val = new ConstInitValAST();
@@ -474,7 +507,7 @@ ConstInitValList
   }
   ;
 
-
+// LVal          ::= IDENT {"[" Exp "]"};
 LVal
   : IDENT {
     auto lval = new LValAST();
@@ -483,6 +516,7 @@ LVal
   }
   ;
 
+// ConstExp      ::= Exp;
 ConstExp
   : Exp {
     auto const_exp = new ConstExpAST();
@@ -491,6 +525,7 @@ ConstExp
   }
   ;
 
+// Exp           ::= LOrExp; 逻辑或
 Exp
   : LOrExp {
     auto exp = new ExpAST();
@@ -499,6 +534,7 @@ Exp
   }
   ;
 
+// PrimaryExp    ::= "(" Exp ")" | LVal | Number; 基本表达式
 PrimaryExp
   : '(' Exp ')' {
     auto primary_exp = new PrimaryExpAST();
@@ -526,12 +562,14 @@ PrimaryExp
   }
   ;
 
+// Number        ::= INT_CONST;
 Number
   : INT_CONST {
     $$ = $1;
   }
   ;
 
+// UnaryExp      ::= PrimaryExp | IDENT "(" [FuncRParams] ")" | UnaryOp UnaryExp; 一元表达式
 UnaryExp
   : PrimaryExp {
     auto unary_exp = new UnaryExpAST();
@@ -566,8 +604,7 @@ UnaryExp
   }
   ;
 
-
-
+// MulExp        ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
 MulExp
   : UnaryExp{
     auto mul_exp = new MulExpAST();
@@ -608,6 +645,8 @@ MulExp
     $$ = mul_exp;
   }
   ;
+
+// AddExp        ::= MulExp | AddExp ("+" | "-") MulExp;
 AddExp 
   : MulExp {
     auto add_exp = new AddExpAST();
@@ -638,6 +677,7 @@ AddExp
   }
   ;
 
+// RelExp        ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp; 关系表达式
 RelExp 
   : AddExp{
     auto rel_exp = new RelExpAST();
@@ -692,6 +732,8 @@ RelExp
     $$ = rel_exp;
   }
   ;
+
+// EqExp         ::= RelExp | EqExp ("==" | "!=") RelExp; 相等性表达式
 EqExp 
   : RelExp{
     auto eq_exp = new EqExpAST();
@@ -721,6 +763,8 @@ EqExp
     $$ = eq_exp;
   }
   ;
+
+// LAndExp       ::= EqExp | LAndExp "&&" EqExp;
 LAndExp
   : EqExp {
     auto l_and_exp = new LAndExpAST();
@@ -737,6 +781,7 @@ LAndExp
     $$ = l_and_exp;
   }
 
+// LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
 LOrExp
   : LAndExp {
     auto l_or_exp = new LOrExpAST();
@@ -753,6 +798,7 @@ LOrExp
     $$ = l_or_exp;
   }
 
+// UnaryOp       ::= "+" | "-" | "!";
 UnaryOp 
   : '+' {
     $$ = '+';
@@ -770,6 +816,7 @@ UnaryOp
   }
   ;
 
+// FuncRParams   ::= Exp {"," Exp};
 FuncRParams
   : Exp {
     auto params = new FuncRParamsAST();

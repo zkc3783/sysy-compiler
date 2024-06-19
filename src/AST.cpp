@@ -11,7 +11,7 @@
 using namespace std;
 
 KoopaIR ki;             // Koopa 中间代码
-SymbolTableStack st;    // 符号表
+SStack st;    // 符号表
 BlockController bc;     // 通过一个bool值管理代码块的活动状态（遇到break，continue, return）
                         // set设为1，finish设为0，alive检查值
 WhileStack wst;         // 用栈管理循环，记录入口、循环体和结束的标签
