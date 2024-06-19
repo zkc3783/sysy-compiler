@@ -8,7 +8,7 @@
 /*
 NameTable 处理重复的变量名
 Symbol表 表示一个表项 包括标识符 ident、名称 name
-SymbolTable 表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
+STable 表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
 SStack 用来处理符号表栈 
 */
 class NameTable{
@@ -51,12 +51,12 @@ public:
     ~Symbol();
 };
 
-class SymbolTable{
+class STable{
 public:
     const int UNKNOWN = -1;
     std::unordered_map<std::string, Symbol *> symbol_tb;  // ident -> Symbol 
-    SymbolTable() = default;
-    ~SymbolTable();
+    STable() = default;
+    ~STable();
     void insert(Symbol *symbol);
     // insert 函数重载：根据标识符 ident、名称 name、类型 _type 和值 value 创建一个新的符号并插入符号表
     void insert(const std::string &ident, const std::string &name, SysYType::TYPE _type, int value);
@@ -77,7 +77,7 @@ public:
 
 class SStack{
 private:
-    std::deque<std::unique_ptr<SymbolTable>> sym_tb_st;
+    std::deque<std::unique_ptr<STable>> sym_tb_st;
     NameTable nt;
 public:
     const int UNKNOWN = -1;

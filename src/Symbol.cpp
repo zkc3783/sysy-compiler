@@ -55,63 +55,63 @@ Symbol::~Symbol(){
     if(ty) delete ty;
 }
 
-SymbolTable::~SymbolTable(){
+STable::~STable(){
     for(auto &p : symbol_tb){
         delete p.second; 
     } 
 }
 // 插入符号表
-void SymbolTable::insert(Symbol *symbol){
+void STable::insert(Symbol *symbol){
     symbol_tb.insert({symbol->ident, symbol});
 } 
 // 创建一个新的符号并插入符号表
-void SymbolTable::insert(const std::string &ident, const std::string &name, SysYType::TYPE _type, int value){
+void STable::insert(const std::string &ident, const std::string &name, SysYType::TYPE _type, int value){
     SysYType *ty = new SysYType(_type, value);
     Symbol *sym = new Symbol(ident, name, ty);
     insert(sym);
 }
 
 // 在符号表中插入
-void SymbolTable::insertINT(const std::string &ident, const std::string &name){
+void STable::insertINT(const std::string &ident, const std::string &name){
     insert(ident, name, SysYType::SYSY_INT, UNKNOWN);
 }
 
-void SymbolTable::insertINTCONST(const std::string &ident, const std::string &name, int value){
+void STable::insertINTCONST(const std::string &ident, const std::string &name, int value){
     insert(ident, name, SysYType::SYSY_INT_CONST, value);
 }
 
-void SymbolTable::insertFUNC(const std::string &ident, const std::string &name, SysYType::TYPE _t){
+void STable::insertFUNC(const std::string &ident, const std::string &name, SysYType::TYPE _t){
     insert(ident, name, _t, UNKNOWN);
 }
 
 // 查找符号表中是否存在标识符
-bool SymbolTable::exists(const std::string &ident){
+bool STable::exists(const std::string &ident){
     return symbol_tb.find(ident) != symbol_tb.end();
 }
 
 // 根据标识符 ident 在符号表中查找并返回对应的 Symbol 对象指针
-Symbol *SymbolTable::Search(const std::string &ident){
+Symbol *STable::Search(const std::string &ident){
     return symbol_tb.find(ident)->second;
 }
 
 // 返回给定标识符 ident 对应的 Symbol 的 value 值
-int SymbolTable::getValue(const std::string &ident){
+int STable::getValue(const std::string &ident){
     return symbol_tb.find(ident)->second->ty->value;
 }
 
 // 返回给定标识符 ident 对应的 Symbol 的 SysYType 指针
-SysYType *SymbolTable::getType(const std::string &ident){
+SysYType *STable::getType(const std::string &ident){
     return symbol_tb.find(ident)->second->ty;
 }
 
 // 返回给定标识符 ident 对应的 Symbol 的 name 属性
-std::string SymbolTable::getName(const std::string &ident){
+std::string STable::getName(const std::string &ident){
     return symbol_tb.find(ident)->second->name;
 }
 
 // 在栈顶分配一个新的符号表
 void SStack::alloc(){
-    sym_tb_st.emplace_back(new SymbolTable());
+    sym_tb_st.emplace_back(new STable());
 }
 // 从栈顶弹出一个符号表
 void SStack::quit(){
