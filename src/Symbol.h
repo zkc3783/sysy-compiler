@@ -40,10 +40,6 @@ class SysYType{
         SysYType(TYPE _t, const std::vector<int> &len);
 
         ~SysYType();
-        //void buildFromArrayType(const std::vector<int> &len, bool is_const);
-        // 创建数组的符号表
-        //void getArrayType(std::vector<int> &len);
-        // 用链表查找，获取数组的维度信息，然后存到len向量中
 };
 
 class Symbol{
@@ -68,7 +64,6 @@ public:
     void insertINT(const std::string &ident, const std::string &name);
     void insertINTCONST(const std::string &ident, const std::string &name, int value);
     void insertFUNC(const std::string &ident, const std::string &name, SysYType::TYPE _t);
-    //void insertArray(const std::string &ident, const std::string &name, const std::vector<int> &len, SysYType::TYPE _t);
     bool exists(const std::string &ident); // 给出标识符查找是否存在
     Symbol *Search(const std::string &ident);
     // 根据标识符 ident 在符号表中查找并返回对应的 Symbol 对象指针
@@ -94,13 +89,11 @@ public:
     void insertINT(const std::string &ident);
     void insertINTCONST(const std::string &ident, int value);
     void insertFUNC(const std::string &ident, SysYType::TYPE _t);
-    //void insertArray(const std::string &ident, const std::vector<int> &len, SysYType::TYPE _t);
     // 上述为插入各个类型的符号
     bool exists(const std::string &ident);// 一个标识符是否存在于符号表栈中的任何一个作用域
     int getValue(const std::string &ident);// 查找值
     SysYType *getType(const std::string &ident);// 查找符号的类型
     std::string getName(const std::string &ident);// 查找name
-
     std::string getTmpName();   // 继承 name manager
     std::string getLabelName(const std::string &label_ident); // 继承 name manager
     std::string getVarName(const std::string& var);   // 获取 var name
