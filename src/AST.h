@@ -94,6 +94,7 @@ public:
 class BlockAST : public BaseAST {       // 单入口单出口的基本块
 public:
     std::vector<std::unique_ptr<BlockItemAST>> block_items; // 基本块中有很多元素，vector装
+    // 进入 block 处理，传参默认为 true 表示新增一层符号表
     void Dump(bool new_symbol_tb = true) const;
 };
 
