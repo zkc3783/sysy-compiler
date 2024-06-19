@@ -185,10 +185,114 @@ clang o文件路径 -L$CDE_LIBRARY_PATH/native -lsysy -o 可执行文件路径
 
 ## 3 语法分析
 
-把北大语法文档拉过来引用一下
-抽象语法树，介绍和语法有关的抽象结构
-抽象语法树在`AST.h`中定义。所有抽象语法树结点都继承自基类`BaseAST`。
+对于Bison语法分析，我们利用SysY语言的文法拓展的EBNF，根据每一个产生式对应的递推关系，定义了语法分析器。
 
+SysY 语言的文法表示如下, CompUnit 为开始符号:
+```
+CompUnit      ::= [CompUnit] (Decl | FuncDef);
+
+Decl          ::= ConstDecl | VarDecl;
+ConstDecl     ::= "const" BType ConstDef {"," ConstDef} ";";
+BType         ::= "int";
+ConstDef      ::= IDENT {"[" ConstExp "]"} "=" ConstInitVal;
+ConstInitVal  ::= ConstExp | "{" [ConstInitVal {"," ConstInitVal}] "}";
+VarDecl       ::= BType VarDef {"," VarDef} ";";
+VarDef        ::= IDENT {"[" ConstExp "]"}
+                | IDENT {"[" ConstExp "]"} "=" InitVal;
+InitVal       ::= Exp | "{" [InitVal {"," InitVal}] "}";
+
+FuncDef       ::= FuncType IDENT "(" [FuncFParams] ")" Block;
+FuncType      ::= "void" | "int";
+FuncFParams   ::= FuncFParam {"," FuncFParam};
+FuncFParam    ::= BType IDENT ["[" "]" {"[" ConstExp "]"}];
+
+Block         ::= "{" {BlockItem} "}";
+BlockItem     ::= Decl | Stmt;
+Stmt          ::= LVal "=" Exp ";"
+                | [Exp] ";"
+                | Block
+                | "if" "(" Exp ")" Stmt ["else" Stmt]
+                | "while" "(" Exp ")" Stmt
+                | "break" ";"
+                | "continue" ";"
+                | "return" [Exp] ";";
+
+Exp           ::= LOrExp;
+LVal          ::= IDENT {"[" Exp "]"};
+PrimaryExp    ::= "(" Exp ")" | LVal | Number;
+Number        ::= INT_CONST;
+UnaryExp      ::= PrimaryExp | IDENT "(" [FuncRParams] ")" | UnaryOp UnaryExp;
+UnaryOp       ::= "+" | "-" | "!";
+FuncRParams   ::= Exp {"," Exp};
+MulExp        ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
+AddExp        ::= MulExp | AddExp ("+" | "-") MulExp;
+RelExp        ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
+EqExp         ::= RelExp | EqExp ("==" | "!=") RelExp;
+LAndExp       ::= EqExp | LAndExp "&&" EqExp;
+LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
+ConstExp      ::= Exp;
+```
+同时**我们在语法分析的同时进行了语法制导，利用智能指针的形式，自底向上的构建了抽象语法树**，为抽象语法树的构建提供了基础。
+
+Bison的基本架构如下。
+其中包含了1个根据产生式构建抽象语法树的例子。
+```cpp
+// 这里写一些选项, 可以控制 Bison 的某些行为
+%code requires {
+  #include <memory>
+  #include <string>
+  #include "AST.h"
+}
+
+%{
+
+// 这里写一些全局的代码
+#include "AST.h"
+// 声明 lexer 函数和错误处理函数
+int yylex();
+void yyerror(std::unique_ptr<BaseAST> &ast, const char *s);
+
+using namespace std;
+%}
+
+// yylval 的定义
+%union {
+  std::string *str_val;
+  int int_val;
+  char char_val;
+  BaseAST *ast_val;
+}
+
+// Bison定义非终结符的类型
+%token VOID INT RETURN
+// 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
+%token <str_val> IDENT
+%token <int_val> INT_CONST
+
+// Bison定义终结符的类型
+%type <ast_val> FuncDef Block Stmt Exp
+%type <int_val> Number
+%type <char_val> UnaryOp 
+
+%%
+// Bison 的 parser 遇到某种语法规则后做的操作
+// 以 FuncDef       ::= FuncType IDENT "(" [FuncFParams] ")" Block;为例
+// 这里赋值的btype IDENT func_params block与下文中AST的定义的变量相对应
+
+FuncDef
+  : BType IDENT '(' FuncFParams ')' Block {
+    auto func_def = new FuncDefAST();
+    func_def->btype = unique_ptr<BTypeAST>((BTypeAST *)$1);
+    func_def->ident = *unique_ptr<string>($2);
+    func_def->func_params = unique_ptr<FuncFParamsAST>((FuncFParamsAST *)$4);
+    func_def->block = unique_ptr<BlockAST>((BlockAST *)$6);
+    $$ = func_def;
+  }
+  ;
+
+%%
+```
+以下部分的通过产生式定义对应的AST数据结构的例子，与上文相对应。
 ```cpp
 class BaseAST {
 public:
@@ -1372,8 +1476,13 @@ void FuncDefAST::Dump() const {
 这种结构确保每个函数都正确地转换成中间表示（IR），这包括参数的处理和函数体内部的语句转换。对于函数的调用，`FuncRParamsAST`的`Dump`方法用于生成调用时传递的实际参数的代码，这有助于处理函数调用过程中的参数传递问题。
 
 ## 6 目标代码生成
+鉴于Koopa IR已经是很结构化的中间代码，我们可以借助[Koopa的C++接口文档](https://github.com/BerkinChen/pku-compiler)提供的访问函数，递归遍历Koopa结构，直接实现对应koopa指令到RISC-V指令的映射，生成目标的RISC-V汇编代码。
 
-
-
+对于Koopa IR到可执行文件的转换，官方也提供了很好的koopa库的支持，通过如下命令行指令即可完成从koopa IR到可执行文件的转换：
+```shell
+koopac hello.koopa | llc --filetype=obj -o hello.o
+clang hello.o -L$CDE_LIBRARY_PATH/native -lsysy -o hello
+./hello
+```
 ## 7 总结
 
