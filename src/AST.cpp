@@ -649,6 +649,7 @@ int ConstExpAST::getValue(){
 }
 
 string ExpAST::Dump() const {
+    ScopeHelper scope("ExpAST");
     return l_or_exp->Dump();
 }
  
@@ -684,6 +685,8 @@ int PrimaryExpAST::getValue(){
 }
 
 string UnaryExpAST::Dump() const{
+    if(tag == OP_UNITARY_EXP ) ScopeHelper scope("UnaryExpAST");
+
     if(tag == PRIMARY_EXP)return primary_exp->Dump();
     else if(tag == OP_UNITARY_EXP){
         string b = unary_exp->Dump();
@@ -712,7 +715,7 @@ string UnaryExpAST::Dump() const{
     }
 }
 
-int UnaryExpAST::getValue(){
+int UnaryExpAST::getValue(){ 
     if(tag == PRIMARY_EXP) return primary_exp->getValue();
 
     int v =unary_exp->getValue();
@@ -721,6 +724,7 @@ int UnaryExpAST::getValue(){
 }
 
 string MulExpAST::Dump() const{ 
+    if(tag != UNARY_EXP)ScopeHelper scope("MulExpAST");
     if(tag == UNARY_EXP)return unary_exp->Dump();
     string a, b, c;
     
@@ -743,6 +747,7 @@ int MulExpAST::getValue(){
 }
 
 string AddExpAST::Dump() const{
+    if(tag != MUL_EXP)ScopeHelper scope("AddExpAST");
     if(tag == MUL_EXP)return mul_exp->Dump();
     string a, b, c;
     
@@ -764,6 +769,7 @@ int AddExpAST::getValue(){
 }
 
 string RelExpAST::Dump() const {
+    if(tag != ADD_EXP)ScopeHelper scope("RelExpAST");
     if(tag == ADD_EXP) return add_exp->Dump();
     string a = rel_exp_1->Dump(), b = add_exp_2->Dump();
     string op = rel_op[1] == '=' ? (rel_op[0] == '<' ? "le" : "ge") : (rel_op[0] == '<' ? "lt" : "gt");
@@ -783,6 +789,7 @@ int RelExpAST::getValue(){
 }
 
 string EqExpAST::Dump() const {
+    if(tag != REL_EXP) ScopeHelper scope("EqExpAST");
     if(tag == REL_EXP) return rel_exp->Dump();
     string a = eq_exp_1->Dump(), b =rel_exp_2->Dump();
     string op = eq_op == '=' ? "eq" : "ne";
@@ -798,6 +805,7 @@ int EqExpAST::getValue(){
 }
 
 string LAndExpAST::Dump() const {
+    if(tag != EQ_EXP) ScopeHelper scope("LAndExpAST");
     if(tag == EQ_EXP) return eq_exp->Dump();
     
     // 修改支持短路逻辑
@@ -833,6 +841,7 @@ int LAndExpAST::getValue(){
 }
 
 string LOrExpAST::Dump() const {
+    if(tag != L_AND_EXP) ScopeHelper scope("LOrExpAST");
     if(tag == L_AND_EXP) return l_and_exp->Dump();
 
     // 修改支持短路逻辑
