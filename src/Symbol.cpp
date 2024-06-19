@@ -110,44 +110,44 @@ std::string SymbolTable::getName(const std::string &ident){
 }
 
 // 在栈顶分配一个新的符号表
-void SymbolTableStack::alloc(){
+void SStack::alloc(){
     sym_tb_st.emplace_back(new SymbolTable());
 }
 // 从栈顶弹出一个符号表
-void SymbolTableStack::quit(){
+void SStack::quit(){
     sym_tb_st.pop_back();
 }
 // 重置名字管理器
-void SymbolTableStack::resetNameManager(){
+void SStack::resetNameManager(){
     nt.reset();
 }
 // 插入一个符号
-void SymbolTableStack::insert(Symbol *symbol){
+void SStack::insert(Symbol *symbol){
     sym_tb_st.back()->insert(symbol);
 }
 // 在当前作用域（栈顶的符号表）中插入一个符号，给定符号标识符、类型和初始值。符号表中的符号名字由 NameTable 生成
-void SymbolTableStack::insert(const std::string &ident, SysYType::TYPE _type, int value){
+void SStack::insert(const std::string &ident, SysYType::TYPE _type, int value){
     string name = nt.getName(ident);
     sym_tb_st.back()->insert(ident, name, _type, value);
 }
 // 插入int
-void SymbolTableStack::insertINT(const std::string &ident){
+void SStack::insertINT(const std::string &ident){
     string name = nt.getName(ident);
     sym_tb_st.back()->insertINT(ident, name);
 }
 // 插入const int
-void SymbolTableStack::insertINTCONST(const std::string &ident, int value){
+void SStack::insertINTCONST(const std::string &ident, int value){
     string name = nt.getName(ident);
     sym_tb_st.back()->insertINTCONST(ident, name, value);
 }
 // 插入一个函数符号
-void SymbolTableStack::insertFUNC(const std::string &ident, SysYType::TYPE _t){
+void SStack::insertFUNC(const std::string &ident, SysYType::TYPE _t){
     string name = "@" + ident;
     sym_tb_st.back()->insertFUNC(ident, name, _t);
 }
 
 // 一个标识符是否存在于符号表栈中的任何一个作用域
-bool SymbolTableStack::exists(const std::string &ident){
+bool SStack::exists(const std::string &ident){
     for(int i = (int)sym_tb_st.size() - 1; i >= 0; --i){
         if(sym_tb_st[i]->exists(ident))
             return true;
@@ -156,7 +156,7 @@ bool SymbolTableStack::exists(const std::string &ident){
 }
 
 // 扫描栈查找并返回符号的值
-int SymbolTableStack::getValue(const std::string &ident){
+int SStack::getValue(const std::string &ident){
     int i = (int)sym_tb_st.size() - 1;
     for(; i >= 0; --i){
         if(sym_tb_st[i]->exists(ident))
@@ -165,7 +165,7 @@ int SymbolTableStack::getValue(const std::string &ident){
     return sym_tb_st[i]->getValue(ident);
 }
 // 扫描栈查找并返回符号的类型
-SysYType *SymbolTableStack::getType(const std::string &ident){
+SysYType *SStack::getType(const std::string &ident){
     int i = (int)sym_tb_st.size() - 1;
     for(; i >= 0; --i){
         if(sym_tb_st[i]->exists(ident))
@@ -174,7 +174,7 @@ SysYType *SymbolTableStack::getType(const std::string &ident){
     return sym_tb_st[i]->getType(ident);
 }
 // 查找符号名
-std::string SymbolTableStack::getName(const std::string &ident){
+std::string SStack::getName(const std::string &ident){
     int i = (int)sym_tb_st.size() - 1;
     for(; i >= 0; --i){
         if(sym_tb_st[i]->exists(ident))
@@ -183,14 +183,14 @@ std::string SymbolTableStack::getName(const std::string &ident){
     return sym_tb_st[i]->getName(ident);
 }
 // 临时变量名
-std::string SymbolTableStack::getTmpName(){
+std::string SStack::getTmpName(){
     return nt.getTmpName();
 }
 // 标签名
-std::string SymbolTableStack::getLabelName(const std::string &label_ident){
+std::string SStack::getLabelName(const std::string &label_ident){
     return nt.getLabelName(label_ident);
 }
 // 变量名
-std::string SymbolTableStack::getVarName(const std::string& var){
+std::string SStack::getVarName(const std::string& var){
     return nt.getName(var);
 }
