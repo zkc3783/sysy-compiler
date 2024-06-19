@@ -120,7 +120,7 @@ void FuncDefAST::Dump() const {
     bc.set();
     ks.label("%entry");
 
-    // 提前把虚参加载到变量中
+    // 把参数加载到变量中
     if(func_params != nullptr){
         int i = 0;
         for(auto &fp : func_params->func_f_params){
@@ -134,7 +134,7 @@ void FuncDefAST::Dump() const {
         }
     }
 
-    // 具体内容交给block
+    // block处理函数内容
     if(func_params != nullptr){
         block->Dump(false);
     }else{
@@ -379,12 +379,18 @@ int ExpAST::getValue(){
 string PrimaryExpAST::Dump() const{
     switch (tag)
     {
-        case PARENTHESES:
+        case PARENTHESES: {
+            ScopeHelper scope("PrimaryExpAST");
             return exp->Dump();
-        case NUMBER:
+        }
+        case NUMBER: {
+            ScopeHelper scope("PrimaryExpAST", to_string(number));
             return to_string(number);
-        case LVAL:
+        }
+        case LVAL: {
+            ScopeHelper scope("PrimaryExpAST");
             return lval->Dump();
+        }
     }
     return "";
 }
@@ -392,12 +398,18 @@ string PrimaryExpAST::Dump() const{
 int PrimaryExpAST::getValue(){
     switch (tag)
     {
-        case PARENTHESES:
+        case PARENTHESES: {
+            ScopeHelper scope("PrimaryExpAST");
             return exp->getValue();
-        case NUMBER:
+        }
+        case NUMBER: {
+            ScopeHelper scope("PrimaryExpAST", to_string(number));
             return number;
-        case LVAL:
+        }
+        case LVAL: {
+            ScopeHelper scope("PrimaryExpAST");
             return lval->getValue();
+        }
     }
     return -1;  // make g++ happy
 }

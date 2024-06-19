@@ -88,7 +88,6 @@ public:
     TAG tag;
     std::unique_ptr<BTypeAST> btype;
     std::string ident;
-    std::vector<std::unique_ptr<ConstExpAST>> const_exps;   // a[][3]
     std::string Dump() const; // 返回参数类型，如i32, *[i32, 4]
 };
 
