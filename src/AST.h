@@ -75,14 +75,14 @@ public:
     void Dump() const;
 };
 
-class FuncFParamsAST : public BaseAST {     // 函数参数列表
+class FuncFParamsAST : public BaseAST {     // 定义函数参数列表
 public:
     std::vector<std::unique_ptr<FuncFParamAST>> func_f_params;
     void Dump() const;
 };
 
 
-class FuncFParamAST : public BaseAST {      // 函数参数
+class FuncFParamAST : public BaseAST {      // 定义函数参数
 public:
     enum TAG { VARIABLE, ARRAY };
     TAG tag;
@@ -90,7 +90,6 @@ public:
     std::string ident;
     std::vector<std::unique_ptr<ConstExpAST>> const_exps;   // a[][3]
     std::string Dump() const; // 返回参数类型，如i32, *[i32, 4]
-    void getIndex(std::vector<int> &len);
 };
 
 
@@ -188,7 +187,6 @@ public:
     std::string ident;
     std::unique_ptr<ConstInitValAST> const_init_val;
     void Dump(bool is_global = false) const;
-    void DumpArray(bool is_global = false) const;
 };
 
 class VarDefAST: public BaseAST {
@@ -198,7 +196,6 @@ public:
     std::string ident;
     std::unique_ptr<InitValAST> init_val;   // nullptr implies no init_val
     void Dump(bool is_global = false) const;
-    void DumpArray(bool is_global = false) const;
 };
 
 class InitValAST : public BaseAST{
@@ -208,7 +205,6 @@ public:
     std::unique_ptr<ExpAST> exp;
     std::vector<std::unique_ptr<InitValAST>> inits; // can be 0, 1, 2,....
     std::string Dump() const;
-    void getInitVal(std::string *ptr, const std::vector<int> &len, bool is_global = false) const;
 };
 
 class ConstInitValAST : public BaseAST {
@@ -219,7 +215,6 @@ public:
     std::vector<std::unique_ptr<ConstInitValAST>> inits;    // size can be 0, 1, ...
     // 表达式求值，计算结果放在pi所指的int内存地址
     int getValue();
-    void getInitVal(std::string *ptr, const std::vector<int> &len) const;
 };
 
 
