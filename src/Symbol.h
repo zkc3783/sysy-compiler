@@ -78,7 +78,7 @@ public:
     const int UNKNOWN = -1;
     void alloc();// 在栈顶分配一个新的符号表
     void quit();// 从栈顶弹出一个符号表
-    void resetNameManager();
+    void resetNameTable();
     void insert(Symbol *symbol);// 插入一个符号
     void insert(const std::string &ident, SysYType::TYPE _type, int value);
     void insertINT(const std::string &ident);

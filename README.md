@@ -249,7 +249,7 @@ class SysYType{
 
 #### 4.2.1 NameTable
 
-**NameManager**: 用来处理重复的变量名
+**NameTable**: 用来处理重复的变量名
 **getTmpName**: 返回一个临时的符号，如`%1`
 **getName**: 返回一个标识符，返回中间代码
 **getLabelName**:返回 Koopa IR 基本块的标签
@@ -313,7 +313,7 @@ public:
 };
 ```
 
-`STable`封装了命名管理器`NameManager`。
+`STable`封装了命名管理器`NameTable`。
 `STable`具体实现如下： 
 
 ```cpp
@@ -367,6 +367,23 @@ std::string STable::getName(const std::string &ident){
 
 ```
 
+如果我们给出如下代码：
+
+```cpp
+int addgv(int n)
+{
+    int gv = 0;
+    gv = gv + n;
+    return gv;
+}
+```
+那么`STable`如下： 
+Ident: gv, Name: gv, Type: INT, Value: 0
+Ident: addgv, Name: addgv, Type: FUNC, Value: -1
+Ident: n, Name: n, Type: INT, Value: -1
+
+Value 的值也会根据全局符号表的改变而改变。
+
 
 ### 4.3 符号栈
 
@@ -381,7 +398,7 @@ public:
     const int UNKNOWN = -1;
     void alloc();// 在栈顶分配一个新的符号表
     void quit();// 从栈顶弹出一个符号表
-    void resetNameManager();
+    void resetNameTable();
     void insert(Symbol *symbol);// 插入一个符号
     void insert(const std::string &ident, SysYType::TYPE _type, int value);
     void insertINT(const std::string &ident);
@@ -1008,7 +1025,7 @@ public:
     const int UNKNOWN = -1;
     void alloc();// 在栈顶分配一个新的符号表
     void quit();// 从栈顶弹出一个符号表
-    void resetNameManager();
+    void resetNameTable();
     void insert(Symbol *symbol);// 插入一个符号
     void insert(const std::string &ident, SysYType::TYPE _type, int value);
     void insertINT(const std::string &ident);

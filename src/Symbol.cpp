@@ -118,7 +118,7 @@ void SStack::quit(){
     sym_tb_st.pop_back();
 }
 // 重置名字管理器
-void SStack::resetNameManager(){
+void SStack::resetNameTable(){
     nt.reset();
 }
 // 插入一个符号
