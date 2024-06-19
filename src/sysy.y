@@ -20,9 +20,10 @@ using namespace std;
 %}
 
 // 定义 parser 函数和错误处理函数的附加参数
+// 我们需要返回一个字符串作为 AST, 所以我们把附加参数定义成字符串的智能指针
 %parse-param { std::unique_ptr<BaseAST> &ast }
 
-// yylval 的定义, 我们把它定义成了一个联合体 (union)
+// yylval 的定义
 %union {
   std::string *str_val;
   int int_val;
@@ -30,19 +31,24 @@ using namespace std;
   BaseAST *ast_val;
 }
 
-// lexer 返回的所有 token 种类的声明
+// 终极符类型 词法分析返回的所有 token 种类的声明 
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
 %token VOID INT RETURN LESS_EQ GREAT_EQ EQUAL NOT_EQUAL AND OR CONST IF ELSE WHILE BREAK CONTINUE
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
-// 非终结符的类型定义
+// 非终结符类型 自己根据要加入的内容定义
 %type <ast_val> FuncDef Block Stmt Exp PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp Decl ConstDecl VarDecl BType ConstDef VarDef ConstDefList VarDefList ConstInitVal InitVal BlockItemList BlockItem LVal ConstExp MatchedStmt OpenStmt OtherStmt GlobalFuncVarList DeclOrFuncDef FuncFParams FuncFParam FuncRParams ArrayIndexConstExpList ArrayIndexExpList InitValList ConstInitValList
 %type <int_val> Number
 %type <char_val> UnaryOp 
-%%
 
-// 开始符, CompUnit ::= GlobalFuncVarList
+%%
+// 这里提供 语法分析器即parser遇到某种语法规则后做的操作
+// 开始符, CompUnit ::= FuncDef, 大括号后声明了解析完成后 parser 要做的事情
+// 之前我们定义了 FuncDef 会返回一个 str_val, 也就是字符串指针
+// 而 parser 一旦解析完 CompUnit, 就说明所有的 token 都被解析了, 即解析结束了
+// 此时我们应该把 FuncDef 返回的结果收集起来, 作为 AST 传给调用 parser 的函数
+// $1 指代规则里第一个符号的返回值, 也就是 FuncDef 的返回值
 CompUnit
   : GlobalFuncVarList {
     auto comp_unit = unique_ptr<CompUnitAST>((CompUnitAST *)$1);
@@ -95,6 +101,15 @@ DeclOrFuncDef
   ;
 
 // FuncDef ::= FuncType IDENT '(' ')' Block;
+// 我们这里可以直接写 '(' 和 ')', 因为之前在 lexer 里已经处理了单个字符的情况
+// 解析完成后, 把这些符号的结果收集起来, 然后拼成一个新的字符串, 作为结果返回
+// $$ 表示非终结符的返回值, 我们可以通过给这个符号赋值的方法来返回结果
+// 你可能会问, FuncType, IDENT 之类的结果已经是字符串指针了
+// 为什么还要用 unique_ptr 接住它们, 然后再解引用, 把它们拼成另一个字符串指针呢
+// 因为所有的字符串指针都是我们 new 出来的, new 出来的内存一定要 delete
+// 否则会发生内存泄漏, 而 unique_ptr 这种智能指针可以自动帮我们 delete
+// 虽然此处你看不出用 unique_ptr 和手动 delete 的区别, 但当我们定义了 AST 之后
+// 这种写法会省下很多内存管理的负担
 FuncDef
   : BType IDENT '(' ')' Block {
     
