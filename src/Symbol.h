@@ -1,9 +1,5 @@
 #pragma once
-#include <unordered_map>
-#include <string>
-#include <vector>
-#include <queue>
-#include <memory>
+#include <bits/stdc++.h>
 
 /*
 NameTable 处理重复的变量名
@@ -22,7 +18,6 @@ public:
     std::string getName(const std::string &s); // @ 
     std::string getLabelName(const std::string &s); // % 
 };
-
 
 class SysYType{
     public:

@@ -1,10 +1,4 @@
-#include <cassert>
-#include <cstdio>
-#include <iostream>
-#include <fstream>
-#include <memory>
-#include <string>
-#include <cstring>
+#include <bits/stdc++.h>
 #include "AST.h"
 #include "koopa.h"
 #include "visit.h"

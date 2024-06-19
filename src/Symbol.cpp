@@ -1,5 +1,5 @@
+#include <bits/stdc++.h>
 #include "Symbol.h"
-#include <iostream>
 using namespace std;
 
 void NameTable::reset(){  // name map的初始化

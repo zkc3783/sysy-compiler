@@ -1,7 +1,5 @@
 #pragma once
-#include <string>
-#include <memory>
-#include <vector>
+#include <bits/stdc++.h>
 // 所有类的声明
 class BaseAST; 
 class CompUnitAST;

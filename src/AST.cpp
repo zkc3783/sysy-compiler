@@ -1,12 +1,6 @@
+#include <bits/stdc++.h>
 #include "AST.h"
 #include "Symbol.h"
-#include <memory>
-#include <string>
-#include <iostream>
-#include <cstdio>
-#include <cstring>
-#include <cstdlib>
-#include <cassert>
 #include "utils.h"
 using namespace std;
 
