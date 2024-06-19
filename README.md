@@ -166,7 +166,7 @@ public:
 };
 ```
 
-其他AST结点的定义方式与之类似，不赘述。
+其他AST结点的定义方式与之类似
 
 #### 2.2.2 类型
 
@@ -177,28 +177,49 @@ class SysYType{
     public:
         enum TYPE{
             SYSY_INT, SYSY_INT_CONST, SYSY_FUNC_VOID, SYSY_FUNC_INT,
-            SYSY_ARRAY_CONST, SYSY_ARRAY
+            SYSY_ARRAY_CONST, SYSY_ARRAY // SYSY的种类
         };
-    
         TYPE ty;
         int value;
         SysYType *next;
+        SysYType(); // 初始化
+        SysYType(TYPE _t);
+        SysYType(TYPE _t, int _v);
+        SysYType(TYPE _t, const std::vector<int> &len);
 
-        /* 此处省略成员函数... */
+        ~SysYType();
 };
 ```
 
 这个类有三个字段，`ty`、`value`和`next`。
 
-+ `ty`表名类型，如`SYSY_INT`表示是一个整型、`SYSY_FUNC_VOID`表示这是一个返回值为空的函数（这里没有记录函数的参数列表类型，因为我们编译器总假定输入的SysY程序是合法的，做了实现上的简化）。
-+ `value`只在常量整型和数组时存有意义的值。对于常量整型，它代表常值；对于数组，它代表这一维度的宽度。
-+ `next`只在表示数组类型时非空。例如，SysY程序中定义了`int a[4][5]`，那么为了表示`a`的类型，`ty`存`SYSY_ARRAY`, `value`存`4`，`next`指向下一个能表示`int[5]`类型的`SysYType`类。
++ `ty`表名类型，如`SYSY_INT`表示是一个整型、`SYSY_FUNC_VOID`表示这是一个返回值为空的函数
++ `value`存储的是常量
 
-其实这个类设计也用于处理指针的情况。处理指针时，将`ty`设为`SYSY_ARRAY`或`SYSY_ARRAY_CONST`，`value`设为`-1`表示这是指针, 而`next`表示这个指针所指对象的类型。例如，一个`int (*)[5]`类型，即指向一个长度为`5`的`int`数组的指针，在我们的表示中，是`int [-1][5]`，这和函数参数中的`int a[][5]`很相似。
 
 #### 2.2.3 符号表
 
-主要涉及三个类：`Symbol`、`SymbolTable`和`SymbolTableStack`。
+主要涉及：`Symbol`、`SymbolTable`和`SymbolTableStack`
+NameManager 处理重复的变量名
+
+Symbol表 表示一个表项 包括标识符 ident、名称 name
+SymbolTable 表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
+SymbolTableStack 用来处理符号表栈
+
+NameManager用来处理重复的变量名
+```cpp
+class NameManager{
+private:
+    int cnt;
+    std::unordered_map<std::string, int> no;
+public:
+    NameManager():cnt(0){}
+    void reset();
+    std::string getTmpName(); // 生成一个新的变量名
+    std::string getName(const std::string &s); // @ 
+    std::string getLabelName(const std::string &s); // % 
+};
+```
 
 `Symbol`是符号表中的一个表项，记录了SysY中的变量的信息，定义如下：
 
@@ -206,25 +227,42 @@ class SysYType{
 class Symbol{
 public:
     std::string ident;   // SysY标识符，诸如x,y
-    std::string name;    // KoopaIR中的具名变量，诸如@x_1, @y_1, ..., @n_2
+    std::string name;    // KoopaIR中的具名变量
     SysYType *ty;
-    Symbol(const std::string &_ident, const std::string &_name, SysYType *_t);
+    Symbol(const std::string &_ident, const std::string &_name, SysYType *_t); // 标识符 _ident、名称 _name 和类型指针 _t 
     ~Symbol();
 };
 ```
 
-`SymbolTable`是一个符号表，主要是一个`std::unordered_map<std::string, Symbol *>`类型的表。可以看做是`Symbol`条目按照`ident`字段进行的索引。
+`SymbolTable`是一个符号表，是`Symbol`条目按照`ident`字段进行的索引。
 
 ```cpp
 class SymbolTable{
 public:
     const int UNKNOWN = -1;
-    std::unordered_map<std::string, Symbol *> symbol_tb;  // ident -> Symbol *
-	/* 此处省略成员函数 */
+    std::unordered_map<std::string, Symbol *> symbol_tb;  // ident -> Symbol 
+    SymbolTable() = default;
+    ~SymbolTable();
+    void insert(Symbol *symbol);
+    // insert 函数重载：根据标识符 ident、名称 name、类型 _type 和值 value 创建一个新的符号并插入符号表
+    void insert(const std::string &ident, const std::string &name, SysYType::TYPE _type, int value);
+    // 在符号表中插入
+    void insertINT(const std::string &ident, const std::string &name);
+    void insertINTCONST(const std::string &ident, const std::string &name, int value);
+    void insertFUNC(const std::string &ident, const std::string &name, SysYType::TYPE _t);
+    bool exists(const std::string &ident); // 给出标识符查找是否存在
+    Symbol *Search(const std::string &ident);
+    // 根据标识符 ident 在符号表中查找并返回对应的 Symbol 对象指针
+    int getValue(const std::string &ident);
+    // 返回value 值
+    SysYType *getType(const std::string &ident);
+    // 返回SysYType 指针
+    std::string getName(const std::string &ident);
+    // 返回 name 
 };
 ```
 
-`SymbolTableStack`是`SymbolTable`组成的栈，同时用命名管理器`NameManager`放置IR中出现重名变量，如下。每进入一个作用域，调用`SymbolTableStack::alloc`，在栈上压入一个新的符号表；而退出则调用`SymbolTableStack::quit`，弹栈。
+`SymbolTableStack`是`SymbolTable`组成的栈，同时用命名管理器`NameManager`处理重名变量，如下。每进入一个作用域，调用`alloc`压栈；而退出则调用`quit`弹栈。
 
 ```cpp
 class SymbolTableStack{
@@ -233,9 +271,23 @@ private:
     NameManager nm;
 public:
     const int UNKNOWN = -1;
-    void alloc();
-    void quit();
-    /* 省略了一些成员函数 */
+    void alloc();// 在栈顶分配一个新的符号表
+    void quit();// 从栈顶弹出一个符号表
+    void resetNameManager();
+    void insert(Symbol *symbol);// 插入一个符号
+    void insert(const std::string &ident, SysYType::TYPE _type, int value);
+    void insertINT(const std::string &ident);
+    void insertINTCONST(const std::string &ident, int value);
+    void insertFUNC(const std::string &ident, SysYType::TYPE _t);
+    // 上述为插入各个类型的符号
+    bool exists(const std::string &ident);// 一个标识符是否存在于符号表栈中的任何一个作用域
+    int getValue(const std::string &ident);// 查找值
+    SysYType *getType(const std::string &ident);// 查找符号的类型
+    std::string getName(const std::string &ident);// 查找name
+
+    std::string getTmpName();   // 继承 name manager
+    std::string getLabelName(const std::string &label_ident); // 继承 name manager
+    std::string getVarName(const std::string& var);   // 获取 var name
 };
 ```
 
