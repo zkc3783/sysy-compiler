@@ -64,7 +64,6 @@ int main(int argc, const char *argv[]) {
     // 释放 Koopa IR 程序占用的内存
     koopa_delete_program(program);
     // 处理 raw program
-    // TODO: Implement Code here:
     Visit(raw);
     fout << rvs.c_str();
     fout.close();
