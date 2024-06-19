@@ -225,13 +225,13 @@ class SysYType{
 
 #### 2.2.3 符号表
 
-主要涉及：`Symbol`、`SymbolTable`和`SymbolTableStack`
+主要涉及：`Symbol`、`STable`和`SStack`
 NameTable 处理重复的变量名
 
 Symbol表 表示一个表项 包括标识符 ident、名称 name
 
-SymbolTable 表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
-SymbolTableStack 用来处理符号表栈
+STable 表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
+SStack 用来处理符号表栈
 
 NameManager用来处理重复的变量名
 ```cpp
@@ -261,15 +261,15 @@ public:
 };
 ```
 
-`SymbolTable`是一个符号表，是`Symbol`条目按照`ident`字段进行的索引
+`STable`是一个符号表，是`Symbol`条目按照`ident`字段进行的索引
 
 ```cpp
-class SymbolTable{
+class STable{
 public:
     const int UNKNOWN = -1;
     std::unordered_map<std::string, Symbol *> symbol_tb;  // ident -> Symbol 
-    SymbolTable() = default;
-    ~SymbolTable();
+    STable() = default;
+    ~STable();
     void insert(Symbol *symbol);
     // insert 函数重载：根据标识符 ident、名称 name、类型 _type 和值 value 创建一个新的符号并插入符号表
     void insert(const std::string &ident, const std::string &name, SysYType::TYPE _type, int value);
@@ -289,12 +289,12 @@ public:
 };
 ```
 
-`SymbolTableStack`是`SymbolTable`组成的栈，同时用命名管理器`NameTable`处理重名变量
+`SStack`是`STable`组成的栈，同时用命名管理器`NameTable`处理重名变量
 
 ```cpp
-class SymbolTableStack{
+class SStack{
 private:
-    std::deque<std::unique_ptr<SymbolTable>> sym_tb_st;
+    std::deque<std::unique_ptr<STable>> sym_tb_st;
     NameTable nt;
 public:
     const int UNKNOWN = -1;
@@ -452,13 +452,13 @@ public:
 };
 ```
 
-其次是栈式的符号表`SymbolTable`。它最重要的两个成员变量，一是封装了命名表` NameTable nt`，二是符号表的栈`std::deque<std::unique_ptr<SymbolTable>> sym_tb_st`。该类有两个函数`alloc`、`quit`，分别对应进入新的作用域时压栈、退出作用域时弹栈。此外，还有一系列负责插入的函数、负责查找的函数，以及`getTmpName`、`getLabelName`、`getVarName`三个向外提供的接口。
+其次是栈式的符号表`STable`。它最重要的两个成员变量，一是封装了命名表` NameTable nt`，二是符号表的栈`std::deque<std::unique_ptr<STable>> sym_tb_st`。该类有两个函数`alloc`、`quit`，分别对应进入新的作用域时压栈、退出作用域时弹栈。此外，还有一系列负责插入的函数、负责查找的函数，以及`getTmpName`、`getLabelName`、`getVarName`三个向外提供的接口。
 
 ```cpp
 
-class SymbolTableStack{
+class SStack{
 private:
-    std::deque<std::unique_ptr<SymbolTable>> sym_tb_st;
+    std::deque<std::unique_ptr<STable>> sym_tb_st;
     NameTable nt;
 public:
     const int UNKNOWN = -1;
@@ -483,18 +483,18 @@ public:
 };
 ```
 
-`SymbolTableStack` 的成员函数实现
+`SStack` 的成员函数实现
 
-插入一个符号表表项`Symbol`，直接调用栈顶的`SymbolTable`的`insert`函数
+插入一个符号表表项`Symbol`，直接调用栈顶的`STable`的`insert`函数
 
 ```cpp
-void SymbolTableStack::insert(Symbol *symbol){
+void SStack::insert(Symbol *symbol){
     sym_tb_st.back()->insert(symbol);
 }
 ```
-查找一个符号表表项，调用栈顶的`SymbolTable`的`exist`函数
+查找一个符号表表项，调用栈顶的`STable`的`exist`函数
 ```cpp
-bool SymbolTableStack::exists(const std::string &ident){
+bool SStack::exists(const std::string &ident){
     for(int i = (int)sym_tb_st.size() - 1; i >= 0; --i){
         if(sym_tb_st[i]->exists(ident))
             return true;
@@ -506,7 +506,7 @@ bool SymbolTableStack::exists(const std::string &ident){
 从栈顶往下开始找标识符`ident`，第一次找到就是该`ident`所在的作用域对应的符号表。返回这个表中标识符`ident`对应的项
 
 ```cpp
-int SymbolTableStack::getValue(const std::string &ident){
+int SStack::getValue(const std::string &ident){
     int i = (int)sym_tb_st.size() - 1;
     for(; i >= 0; --i){
         if(sym_tb_st[i]->exists(ident))
@@ -515,7 +515,7 @@ int SymbolTableStack::getValue(const std::string &ident){
     return sym_tb_st[i]->getValue(ident);
 }
 // 扫描栈查找并返回符号的值
-SysYType *SymbolTableStack::getType(const std::string &ident){
+SysYType *SStack::getType(const std::string &ident){
     int i = (int)sym_tb_st.size() - 1;
     for(; i >= 0; --i){
         if(sym_tb_st[i]->exists(ident))
@@ -524,7 +524,7 @@ SysYType *SymbolTableStack::getType(const std::string &ident){
     return sym_tb_st[i]->getType(ident);
 }
 // 扫描栈查找并返回符号的类型
-std::string SymbolTableStack::getName(const std::string &ident){
+std::string SStack::getName(const std::string &ident){
     int i = (int)sym_tb_st.size() - 1;
     for(; i >= 0; --i){
         if(sym_tb_st[i]->exists(ident))
@@ -533,55 +533,55 @@ std::string SymbolTableStack::getName(const std::string &ident){
     return sym_tb_st[i]->getName(ident);
 }
 // 查找符号名
-std::string SymbolTableStack::getTmpName(){
+std::string SStack::getTmpName(){
     return nt.getTmpName();
 }
 // 临时变量名
-std::string SymbolTableStack::getLabelName(const std::string &label_ident){
+std::string SStack::getLabelName(const std::string &label_ident){
     return nt.getLabelName(label_ident);
 }
 // 标签名
-std::string SymbolTableStack::getVarName(const std::string& var){
+std::string SStack::getVarName(const std::string& var){
     return nt.getName(var);
 }
 // 变量名
 ```
 
-`SymbolTable`的实现
+`STable`的实现
 
 ```cpp
-bool SymbolTable::exists(const std::string &ident){
+bool STable::exists(const std::string &ident){
     return symbol_tb.find(ident) != symbol_tb.end();
 }
 // 查找符号表中是否存在标识符
 
-void SymbolTable::insert(Symbol *symbol){
+void STable::insert(Symbol *symbol){
     symbol_tb.insert({symbol->ident, symbol});
 } // 插入符号表
 
-void SymbolTable::insert(const std::string &ident, const std::string &name, SysYType::TYPE _type, int value){
+void STable::insert(const std::string &ident, const std::string &name, SysYType::TYPE _type, int value){
     SysYType *ty = new SysYType(_type, value);
     Symbol *sym = new Symbol(ident, name, ty);
     insert(sym);
 }
 // 创建一个新的符号并插入符号表
 
-void SymbolTable::insertINT(const std::string &ident, const std::string &name){
+void STable::insertINT(const std::string &ident, const std::string &name){
     insert(ident, name, SysYType::SYSY_INT, UNKNOWN);
 }
 // 在符号表中插入
-void SymbolTable::insertINTCONST(const std::string &ident, const std::string &name, int value){
+void STable::insertINTCONST(const std::string &ident, const std::string &name, int value){
     insert(ident, name, SysYType::SYSY_INT_CONST, value);
 }
 
-void SymbolTable::insertFUNC(const std::string &ident, const std::string &name, SysYType::TYPE _t){
+void STable::insertFUNC(const std::string &ident, const std::string &name, SysYType::TYPE _t){
     insert(ident, name, _t, UNKNOWN);
 }
 ```
 
 接下来，举几个例子说明一下这些类在 Koopa IR 生成模块`AST.cpp`中是如何调用的。
 
-在`AST.cpp`中，定义了全局变量`SymbolTableStack st;`表示符号表栈。
+在`AST.cpp`中，定义了全局变量`SStack st;`表示符号表栈。
 
 抽象语法树的根节点`CompUnitAST`，调用`st.alloc`、`st.quit`确定全局作用域：
 
