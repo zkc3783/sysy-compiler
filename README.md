@@ -209,7 +209,6 @@ public:
 
 其他AST结点的定义方式与之类似
 
-
 ## 4 语义分析
 
 ### 4.1 符号的类型
@@ -239,7 +238,6 @@ class SysYType{
 
 + `ty`表名类型，如`SYSY_INT`表示是一个整型、`SYSY_FUNC_VOID`表示这是一个返回值为空的函数
 + `value`存储的是常量
-
 
 ### 4.2 符号表
 
@@ -410,6 +408,97 @@ public:
 ### 5.1 语法树
 
 #### 5.1.1 定义
+
+在编译器设计中，抽象语法树（AST）是源代码的抽象符号表示，用来表示程序的语法结构。它通过树形结构体现出程序编写的层次性，其中每个节点都代表了源代码中的一种结构，如表达式、语句或声明。
+
+首先，我们定义了 **基类（BaseAST）**，即为所有语法树节点的基类，定义了通用的接口和抽象方法。这个基础类允许通过多态处理各种不同类型的语法树节点。这种设计允许编译器的其他组件统一处理不同类型的节点，而无需知道节点的具体类型。
+
+```cpp
+class BaseAST {
+public:
+    virtual ~BaseAST() = default;  // 确保派生类的正确析构
+};
+```
+
+每个具体的AST类都是从`BaseAST`派生的，并代表语法分析阶段中的一个特定的语法构造。例如，`FuncDefAST` 类代表一个函数定义，它直接映射到语法中的函数定义产生式：
+
+```cpp
+// FuncDef       ::= FuncType IDENT "(" [FuncFParams] ")" Block;
+class FuncDefAST : public BaseAST {
+public:
+    std::unique_ptr<BTypeAST> btype;    // 函数返回类型
+    std::string ident;                  // 函数名
+    std::unique_ptr<FuncFParamsAST> func_params; // 函数参数列表
+    std::unique_ptr<BlockAST> block;    // 函数体的AST节点
+
+    void Dump() const; // 递递归地生成中间代码
+};
+```
+
+在AST中，节点通常使用指针来表示子节点，这主要有几个原因：
+- **动态绑定**：使用指针可以在运行时解析具体的节点类型，利用多态进行适当的处理。
+- **灵活的树结构管理**：指针使得添加、移除和修改子节点变得简单，因为这些操作不需要在连续的内存空间中进行。
+- **内存管理**：使用智能指针（如 `std::unique_ptr`）可以自动管理节点的生命周期，避免内存泄漏，并简化复杂树结构的内存管理。
+
+通过这种方式，编译器前端将源代码转换为AST，后续的过程如优化和代码生成则直接操作这些抽象的表示形式，从而有效地进行程序分析和转换，最终生成高效的目标代码。
+
+我们将类间关系通过[关系图](file/类间关系.pdf)来表示如下：
+
+```mermaid
+graph LR
+    CompUnitAST -->|func_defs| FuncDefAST
+    CompUnitAST -->|decls| DeclAST
+    FuncDefAST -->|btype| BTypeAST
+    FuncDefAST -->|func_params| FuncFParamsAST
+    FuncDefAST -->|block| BlockAST
+    FuncFParamsAST -->|func_f_params| FuncFParamAST
+    FuncFParamAST -->|btype| BTypeAST
+    BlockAST -->|block_items| BlockItemAST
+    BlockItemAST -->|decl| DeclAST
+    BlockItemAST -->|stmt| StmtAST
+    DeclAST -->|const_decl| ConstDeclAST
+    DeclAST -->|var_decl| VarDeclAST
+    StmtAST -->|exp| ExpAST
+    StmtAST -->|lval| LValAST
+    StmtAST -->|block| BlockAST
+    StmtAST -->|stmt| StmtAST
+    StmtAST -->|if_stmt| StmtAST
+    StmtAST -->|else_stmt| StmtAST
+    ConstDeclAST -->|const_defs| ConstDefAST
+    ConstDeclAST -->|btype| BTypeAST
+    VarDeclAST -->|var_defs| VarDefAST
+    VarDeclAST -->|btype| BTypeAST
+    ConstDefAST -->|const_init_val| ConstInitValAST
+    VarDefAST -->|init_val| InitValAST
+    InitValAST -->|exp| ExpAST
+    ConstInitValAST -->|const_exp| ConstExpAST
+    LValAST -->|exps| ExpAST
+    ExpAST -->|l_or_exp| LOrExpAST
+    PrimaryExpAST -->|exp| ExpAST
+    PrimaryExpAST -->|lval| LValAST
+    UnaryExpAST -->|primary_exp| PrimaryExpAST
+    UnaryExpAST -->|unary_exp| UnaryExpAST
+    UnaryExpAST -->|func_params| FuncRParamsAST
+    MulExpAST -->|unary_exp| UnaryExpAST
+    MulExpAST -->|mul_exp_1| MulExpAST
+    MulExpAST -->|unary_exp_2| UnaryExpAST
+    AddExpAST -->|mul_exp| MulExpAST
+    AddExpAST -->|add_exp_1| AddExpAST
+    AddExpAST -->|mul_exp_2| MulExpAST
+    RelExpAST -->|add_exp| AddExpAST
+    RelExpAST -->|rel_exp_1| RelExpAST
+    RelExpAST -->|add_exp_2| AddExpAST
+    EqExpAST -->|rel_exp| RelExpAST
+    EqExpAST -->|eq_exp_1| EqExpAST
+    EqExpAST -->|rel_exp_2| RelExpAST
+    LAndExpAST -->|eq_exp| EqExpAST
+    LAndExpAST -->|l_and_exp_1| LAndExpAST
+    LAndExpAST -->|eq_exp_2| EqExpAST
+    LOrExpAST -->|l_and_exp| LAndExpAST
+    LOrExpAST -->|l_or_exp_1| LOrExpAST
+    LOrExpAST -->|l_and_exp_2| LAndExpAST
+    FuncRParamsAST -->|exps| ExpAST
+```
 
 #### 5.1.2 结构生成器
 
