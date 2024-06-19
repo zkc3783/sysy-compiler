@@ -163,9 +163,10 @@ void FuncDefAST::Dump() const {
         }
     }
     ks.append(")");
-    if(btype->tag == BTypeAST::INT){
-        ks.append(": i32");
-    }
+    btype->Dump();
+    // if(btype->tag == BTypeAST::INT){
+    //     ks.append(": i32");
+    // }
     ks.append(" {\n");
 
     // 进入Block

@@ -124,24 +124,43 @@ public:
 // StmtAST OtherStmt && IF 
 class StmtAST : public BaseAST {
 public:
-    /**
-     * OtherStmt ::= LVal "=" Exp ";"
-       | [Exp] ";"
-       | Block
-       | "return" [Exp] ";";
-       | "while" "(" Exp ")" Stmt
-       | "break" ";"
-       | "continue" ";"
-     * 以及IF语句
-    */
+/*
+cmh
+    StmtAST::Dump 方法处理不同类型的语句格式，每种语句类型都对应一个格式：
+    RETURN语句: "return [Exp];"
+        - 如果有表达式exp，则处理 exp->Dump()。
+        - 如果没有表达式，则处理 "return;"。
+
+    ASSIGN语句: "LVal = Exp;"
+        - 分别处理左值 lval->Dump(true) 和表达式 exp->Dump()。
+
+    BLOCK语句: "Block { ... }"
+        - 直接调用 block->Dump() 处理内部的语句块。
+
+    EXP语句: "[Exp];"
+        - 处理 exp->Dump()。
+
+    WHILE语句: "while (Exp) Stmt"
+        - 分别处理条件表达式 exp->Dump() 和循环体 stmt->Dump()。
+
+    BREAK语句: "break;"
+        - 处理 "break;"。
+
+    CONTINUE语句: "continue;"
+        - 处理 "continue;"。
+
+    IF语句: "if (Exp) Stmt [else Stmt]"
+        - 条件表达式 exp->Dump()，然后是 if_stmt->Dump()，
+          可选的 else_stmt->Dump() 处理else部分。
+*/
     enum TAG {RETURN, ASSIGN, BLOCK, EXP, WHILE, BREAK, CONTINUE, IF};
-    TAG tag; //语句可能是以上的某一种，是哪种就用下面的哪种指针对应的类
-    std::unique_ptr<ExpAST> exp;        // 表达式，比如 1 + 2 + a, 1 等
-    std::unique_ptr<LValAST> lval;      // 变量
-    std::unique_ptr<BlockAST> block;    // 大括号包裹的块
-    std::unique_ptr<StmtAST> stmt;      // while 的程序体
-    std::unique_ptr<StmtAST> if_stmt;   // then 的程序体
-    std::unique_ptr<StmtAST> else_stmt; // else 的程序体
+    TAG tag; //语句可能是以上的某一种，是哪种就用下面的所需要的类
+    std::unique_ptr<ExpAST> exp;
+    std::unique_ptr<LValAST> lval;
+    std::unique_ptr<BlockAST> block;
+    std::unique_ptr<StmtAST> stmt;
+    std::unique_ptr<StmtAST> if_stmt;
+    std::unique_ptr<StmtAST> else_stmt;
     void Dump() const;
 };
 
