@@ -181,7 +181,38 @@ clang o文件路径 -L$CDE_LIBRARY_PATH/native -lsysy -o 可执行文件路径
 
 ## 2 词法分析
 
-写正则表达式和其他规则等
+Flex词法分析的基本架构如下。
+其中包含了1个正则表达式的例子和1个Flex执行相应操作的例子。
+```cpp
+%{
+// 这里写一些全局的代码
+// 因为最后要生成 C/C++ 文件, 实现主要逻辑的部分都是用 C/C++ 写的
+// 难免会用到头文件, 所以通常头文件和一些全局声明/定义写在这里
+#include <string>
+
+// 因为 Flex 会用到 Bison 中关于 token 的定义
+// 所以需要 include Bison 生成的头文件sysy.tab.hpp
+#include "sysy.tab.hpp"
+
+using namespace std;
+%}
+// 对于 Flex的相关定义, 这里可以定义某个符号对应的正则表达式
+/* 标识符 */
+Identifier    [a-zA-Z_][a-zA-Z0-9_]*
+BlockComment   \/\*([^\*]*|[\*]+[^\*\/])*[\*]+\/
+//              对应的正则匹配关系如下
+//             /*  非星号 一个星+非星非/串 多星+\结尾的字符串
+
+%%
+//这里Flex的对应操作, 这里写的是 lexer 扫描到某个 token 后做的操作
+
+//当识别到Identifier的时候 将指针yytext指向的文本赋值给yylval这个语法中定义联合体（union）的str_val字段，并返回IDENT这个词法token
+{Identifier}    { yylval.str_val = new string(yytext); return IDENT; }
+//
+.               { return yytext[0]; }
+%%
+
+```
 
 ## 3 语法分析
 
