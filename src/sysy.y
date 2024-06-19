@@ -38,7 +38,7 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符类型 自己根据要加入的内容定义
-%type <ast_val> FuncDef Block Stmt Exp PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp Decl ConstDecl VarDecl BType ConstDef VarDef ConstDefList VarDefList ConstInitVal InitVal BlockItemList BlockItem LVal ConstExp MatchedStmt OpenStmt OtherStmt GlobalFuncVarList DeclOrFuncDef FuncFParams FuncFParam FuncRParams ArrayIndexConstExpList ArrayIndexExpList InitValList ConstInitValList
+%type <ast_val> FuncDef Block Stmt Exp PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp Decl ConstDecl VarDecl BType ConstDef VarDef ConstDefList VarDefList ConstInitVal InitVal BlockItemList BlockItem LVal ConstExp MatchedStmt OpenStmt OtherStmt GlobalFuncVarList DeclOrFuncDef FuncFParams FuncFParam FuncRParams InitValList ConstInitValList
 %type <int_val> Number
 %type <char_val> UnaryOp 
 
@@ -162,16 +162,6 @@ FuncFParam
     func_param->tag = FuncFParamAST::ARRAY;
     func_param->btype.reset((BTypeAST *)$1);
     func_param->ident = *unique_ptr<string>($2);
-    $$ = func_param;
-  } | BType IDENT '[' ']' ArrayIndexConstExpList {
-    auto func_param = new FuncFParamAST();
-    func_param->tag = FuncFParamAST::ARRAY;
-    func_param->btype.reset((BTypeAST *)$1);
-    func_param->ident = *unique_ptr<string>($2);
-    unique_ptr<ArrayIndexConstExpList> p((ArrayIndexConstExpList *)$5);
-    for(auto &ce : p->const_exps){
-        func_param->const_exps.emplace_back(ce.release());
-    }
     $$ = func_param;
   }
   ;
@@ -428,44 +418,6 @@ ConstDef
     $$ = const_def;
   }
   ;
-ConstDef
-  : IDENT ArrayIndexConstExpList '=' ConstInitVal {
-    auto const_def = new ConstDefAST();
-    unique_ptr<ArrayIndexConstExpList> p( (ArrayIndexConstExpList *)$2);
-    const_def->tag = ConstDefAST::ARRAY;
-    const_def->ident = *unique_ptr<string>($1);
-    for(auto &ce : p->const_exps){
-        const_def->const_exps.emplace_back(ce.release());
-    }
-    const_def->const_init_val = unique_ptr<ConstInitValAST>((ConstInitValAST *)$4);
-    $$ = const_def;
-  }
-  ;
-
-ArrayIndexConstExpList
-  : '[' ConstExp ']' {
-    auto p = new ArrayIndexConstExpList();
-    p->const_exps.emplace_back((ConstExpAST *)$2);
-    $$ = p;
-  } | ArrayIndexConstExpList '[' ConstExp ']' {
-    auto p = (ArrayIndexConstExpList *)$1;
-    p->const_exps.emplace_back((ConstExpAST *)$3);
-    $$ = p;
-  }
-  ;
-
-ArrayIndexExpList
-  : '[' Exp ']' {
-    auto p = new ArrayIndexExpList();
-    p->exps.emplace_back((ExpAST *)$2);
-    $$ = p;
-  } | ArrayIndexExpList '[' Exp ']' {
-    auto p = (ArrayIndexExpList *)$1;
-    p->exps.emplace_back((ExpAST *)$3);
-    $$ = p;
-  }
-  ;
-
 
 VarDef
   : IDENT{
@@ -473,32 +425,13 @@ VarDef
     var_def->tag = VarDefAST::VARIABLE;
     var_def->ident = *unique_ptr<string>($1);
     $$ = var_def;
-  } | IDENT ArrayIndexConstExpList {
-    auto var_def = new VarDefAST();
-    var_def->tag = VarDefAST::ARRAY;
-    var_def->ident = *unique_ptr<string>($1);
-    unique_ptr<ArrayIndexConstExpList> p((ArrayIndexConstExpList *)$2);
-    for(auto &ce : p->const_exps){
-        var_def->const_exps.emplace_back(ce.release());
-    }
-    $$ = var_def;
   } | IDENT '=' InitVal {
     auto var_def = new VarDefAST();
     var_def->tag = VarDefAST::VARIABLE;
     var_def->ident = *unique_ptr<string>($1);
     var_def->init_val = unique_ptr<InitValAST>((InitValAST *)$3);
     $$ = var_def;
-  } | IDENT ArrayIndexConstExpList '=' InitVal {
-    auto var_def = new VarDefAST();
-    var_def->tag = VarDefAST::ARRAY;
-    var_def->ident = *unique_ptr<string>($1);
-    unique_ptr<ArrayIndexConstExpList> p((ArrayIndexConstExpList *)$2);
-    for(auto &ce : p->const_exps){
-        var_def->const_exps.emplace_back(ce.release());
-    }
-    var_def->init_val = unique_ptr<InitValAST>((InitValAST *)$4);
-    $$ = var_def;
-  }
+  } 
   ;
 
 InitVal
@@ -562,15 +495,6 @@ LVal
     auto lval = new LValAST();
     lval->tag = LValAST::VARIABLE;
     lval->ident = *unique_ptr<string>($1);
-    $$ = lval;
-  } | IDENT ArrayIndexExpList {
-    auto lval = new LValAST();
-    unique_ptr<ArrayIndexExpList> p((ArrayIndexExpList *)$2);
-    lval->tag = LValAST::ARRAY;
-    lval->ident = *unique_ptr<string>($1);
-    for(auto &e : p->exps){
-        lval->exps.emplace_back(e.release());
-    }
     $$ = lval;
   }
   ;
