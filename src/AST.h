@@ -84,8 +84,6 @@ public:
 
 class FuncFParamAST : public BaseAST {      // 定义函数参数
 public:
-    enum TAG { VARIABLE, ARRAY };
-    TAG tag;
     std::unique_ptr<BTypeAST> btype;
     std::string ident;
     std::string Dump() const; // 返回参数类型，如i32, *[i32, 4]
@@ -181,8 +179,6 @@ public:
 
 class ConstDefAST : public BaseAST {
 public:
-    enum TAG { VARIABLE, ARRAY };
-    TAG tag;
     std::string ident;
     std::unique_ptr<ConstInitValAST> const_init_val;
     void Dump(bool is_global = false) const;
@@ -190,8 +186,6 @@ public:
 
 class VarDefAST: public BaseAST {
 public:
-    enum TAG { VARIABLE, ARRAY };
-    TAG tag;
     std::string ident;
     std::unique_ptr<InitValAST> init_val;   // nullptr implies no init_val
     void Dump(bool is_global = false) const;
@@ -202,7 +196,6 @@ public:
     enum TAG { EXP, INIT_LIST};
     TAG tag;
     std::unique_ptr<ExpAST> exp;
-    std::vector<std::unique_ptr<InitValAST>> inits; // can be 0, 1, 2,....
     std::string Dump() const;
 };
 
@@ -211,7 +204,6 @@ public:
     enum TAG { CONST_EXP, CONST_INIT_LIST };
     TAG tag;
     std::unique_ptr<ConstExpAST> const_exp;
-    std::vector<std::unique_ptr<ConstInitValAST>> inits;    // size can be 0, 1, ...
     // 表达式求值，计算结果放在pi所指的int内存地址
     int getValue();
 };
@@ -219,8 +211,6 @@ public:
 
 class LValAST : public BaseAST {
 public:
-    enum TAG { VARIABLE, ARRAY };
-    TAG tag;
     std::string ident;
     std::string Dump(bool dump_ptr = false) const;   // 默认返回的是i32而非指针。
     int getValue();
