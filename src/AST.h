@@ -40,19 +40,10 @@ class LOrExpAST;
 
 class FuncRParamsAST;
 
-/*
-    cmh
-    BaseAST 是语法树的节点类，它的所有子类表示不同的节点种类
-    虽然继承只有一层，但是例如 CompUnitAST 中定义了 std::vector<std::unique_ptr<FuncDefAST>> func_defs;
-    用类间关系来说就是关联关系
-*/
-
 // 所有 AST 的基类
 class BaseAST {
 public:
     virtual ~BaseAST() = default;
-    // 完成LR的打印，并返回计算结果（临时变量或立即数）所在的变量
-    // 删掉了，不用多态。
     // virtual std::string Dump() const = 0;
 };
 
@@ -87,7 +78,7 @@ class FuncFParamAST : public BaseAST {      // 定义函数参数
 public:
     std::unique_ptr<BTypeAST> btype;
     std::string ident;
-    std::string Dump() const; // 返回参数类型，如i32, *[i32, 4]
+    std::string Dump() const; // 返回参数类型，即“i32”
 };
 
 // Block         ::= "{" {BlockItem} "}";
