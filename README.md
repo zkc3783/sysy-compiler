@@ -235,7 +235,7 @@ class SysYType{
 };
 ```
 
-这个类有三个字段，`ty`、`value`和`next`。
+`SysYType`有三个字段，`ty`、`value`和`next`。
 
 + `ty`表名类型，如`SYSY_INT`表示是一个整型、`SYSY_FUNC_VOID`表示这是一个返回值为空的函数
 + `value`存储的是常量
@@ -243,15 +243,19 @@ class SysYType{
 
 ### 4.2 符号表
 
-主要涉及：`Symbol`、`STable`和`SStack`
-NameTable 处理重复的变量名
+主要涉及：`NameTable`、`Symbol`、`STable`
 
-Symbol表 表示一个表项 包括标识符 ident、名称 name
+**NameTable**：用于处理重复的变量名
+**Symbol**：表示一个表项 包括标识符 ident、名称 name
+**STable**：表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
 
-STable 表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
-SStack 用来处理符号表栈
+### 4.2.1 NameTable
 
-NameManager用来处理重复的变量名
+**NameManager**: 用来处理重复的变量名
+**getTmpName**: 返回一个临时的符号，如`%1`
+**getName**: 返回一个标识符，返回中间代码
+**getLabelName**:返回 Koopa IR 基本块的标签
+
 ```cpp
 class NameTable{
 private:
@@ -260,11 +264,12 @@ private:
 public:
     NameTable():cnt(0){}
     void reset();
-    std::string getTmpName(); // 生成一个新的变量名
+    std::string getTmpName(); // 返回临时的符号
     std::string getName(const std::string &s); // @ 
     std::string getLabelName(const std::string &s); // % 
 };
 ```
+### 4.2.2 Symbol
 
 `Symbol`是符号表中的一个表项，记录了SysY中的变量的信息，定义如下：
 
@@ -279,7 +284,10 @@ public:
 };
 ```
 
-`STable`是一个符号表，是`Symbol`条目按照`ident`字段进行的索引
+### 4.2.3 STable
+
+`STable`是符号表，是`Symbol`条目按照`ident`字段进行的索引，为一个基本块中的信息。
+里面涉及到插入符号表，查找标识符是否存在，`getValue`、`getName`等操作返回符号表的值和名字。
 
 ```cpp
 class STable{
@@ -307,9 +315,64 @@ public:
 };
 ```
 
+`STable`封装了命名管理器`NameManager`。
+`STable`具体实现如下： 
+
+```cpp
+void STable::insert(Symbol *symbol){
+    symbol_tb.insert({symbol->ident, symbol});
+} 
+// 创建一个新的符号并插入符号表
+void STable::insert(const std::string &ident, const std::string &name, SysYType::TYPE _type, int value){
+    SysYType *ty = new SysYType(_type, value);
+    Symbol *sym = new Symbol(ident, name, ty);
+    insert(sym);
+}
+
+// 在符号表中插入
+void STable::insertINT(const std::string &ident, const std::string &name){
+    insert(ident, name, SysYType::SYSY_INT, UNKNOWN);
+}
+
+void STable::insertINTCONST(const std::string &ident, const std::string &name, int value){
+    insert(ident, name, SysYType::SYSY_INT_CONST, value);
+}
+
+void STable::insertFUNC(const std::string &ident, const std::string &name, SysYType::TYPE _t){
+    insert(ident, name, _t, UNKNOWN);
+}
+
+// 查找符号表中是否存在标识符
+bool STable::exists(const std::string &ident){
+    return symbol_tb.find(ident) != symbol_tb.end();
+}
+
+// 根据标识符 ident 在符号表中查找并返回对应的 Symbol 对象指针
+Symbol *STable::Search(const std::string &ident){
+    return symbol_tb.find(ident)->second;
+}
+
+// 返回给定标识符 ident 对应的 Symbol 的 value 值
+int STable::getValue(const std::string &ident){
+    return symbol_tb.find(ident)->second->ty->value;
+}
+
+// 返回给定标识符 ident 对应的 Symbol 的 SysYType 指针
+SysYType *STable::getType(const std::string &ident){
+    return symbol_tb.find(ident)->second->ty;
+}
+
+// 返回给定标识符 ident 对应的 Symbol 的 name 属性
+std::string STable::getName(const std::string &ident){
+    return symbol_tb.find(ident)->second->name;
+}
+
+```
+
+
 ### 4.3 符号栈
 
-`SStack`是`STable`组成的栈，同时用命名管理器`NameTable`处理重名变量
+`SStack`是`STable`组成的栈，同时用命名管理器`NameTable`处理重名变量。
 
 ```cpp
 class SStack{
@@ -337,6 +400,10 @@ public:
     std::string getVarName(const std::string& var);   // 获取 var name
 };
 ```
+
+我们可以调用`insert`用来插入一个表项，调用栈顶`STable`的`insert`函数。
+如果是插入基本类型，那么这将先调用命名管理器`getName`，获得这个标识符`ident`在 `Koopa IR` 中具有的唯一名字，再将其插入栈顶符号表。
+这些`get`开头查找的函数从栈顶往下开始找标识符ident，第一次找到就是该ident所在的作用域对应的符号表。返回这个表中标识符ident对应的Name或者Value。
 
 ## 5 中间代码生成
 
