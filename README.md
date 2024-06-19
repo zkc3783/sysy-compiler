@@ -30,6 +30,11 @@ int main() {
 8.种类: 其他字符, 内容: ;.
 9.种类: 其他字符, 内容: }.
 
+得到的终极符是这样的
+```
+"int" IDENT "(" ")" "{" "return" INT_CONST ";" "}"
+```
+
 ### 0.3 语法分析
 
 语法分析的目的是，按照**程序的语法规则**，例如，对于 SysY 程序，关键字 int 后跟的一定是一个标识符, 而不可能是一个整数字面量），**将输入的 token 流变成程序的 AST**
@@ -144,7 +149,16 @@ build/compiler -riscv SysY文件路径 -o RISC-V文件路径
 
 ![模块图](pic/模块图.jpg)
 
+<<<<<<< HEAD
 除此以外,还有一些辅助的模块，如`Symbol.[h|cpp]`中定义了类型、符号表相关的类；`utils.h`中定义了一些工具类，例如管理 Koopa IR 的`KoopaIR`模块。
+=======
+我们使用 Flex 和 Bison 来分别生成词法分析器和语法分析器. 其中:
+
+- Flex 用来描述 EBNF 中的**终结符**部分, 也就是描述 token 的形式和种类. 你可以使用正则表达式来描述 token.
+- Bison 用来描述 EBNF 本身, 其依赖于 Flex 中的终结符描述. 它会生成一个 **LALR parser**.
+
+除此以外,还有一些辅助的模块，如`Symbol.[h|cpp]`中定义了类型、符号表相关的类；`utils.h`中定义了一些工具类，例如管理 Koopa IR 的`KoopaString`模块。
+>>>>>>> 8c72c7fdbc36ba0106bd52e0cc50587db4acae99
 
 ### 2.2 主要数据结构
 
