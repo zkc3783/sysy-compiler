@@ -147,8 +147,6 @@ clang o文件路径 -L$CDE_LIBRARY_PATH/native -lsysy -o 可执行文件路径
 
 ![alt text](pic/运行演示.png)
 
----以上均为原创---
-
 ## 2 编译器设计
 
 ### 2.1 主要模块组成
