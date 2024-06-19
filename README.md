@@ -792,10 +792,13 @@ graph TD
 ### 5.4 表达式
 表达式的解析通过一系列共同实现，这些类各司其职，依次调用（见图），实现形式类似递归。
 
+
 这些类中均包含`Dump`方法和`getValue`方法。`Dump`方法用于生成计算表达式的中间代码，并返回存储结果的变量名；
 `getValue`方法用于直接返回表达式的值。
 
-`ExpAST`类是表达式解析的入口类,其调用`LOrExpAST`类，令其开始分析语句。
+具体实现方面，这些类的逻辑类似递归：分析标签，若是本类所处理的关系则处理，否则调用下一个类进行处理。
+
+`ExpAST`类是表达式解析抽象程度最高的类，表达式解析从此开始，其调用`LOrExpAST`类，开始分析语句。
 ```cpp
 //AST.h
 class ExpAST : public BaseAST {
@@ -815,15 +818,15 @@ int ExpAST::getValue(){
     return l_or_exp->getValue();
 }
 ```
-具体实现方面，这些类的逻辑类似递归：分析标签，若是本类所处理的关系则处理，否则调用下一个类进行处理。
 
-以处理或表达式的`LOrExpAST`类中的`Dump`方法和`getValue`方法为例，若其发现表达式为或表达式，则开始进行处理并返回对应内容。
+以处理或表达式的`LOrExpAST`类中的`Dump`方法和`getValue`方法为例，若其发现表达式为`或`表达式，则开始进行处理并返回对应内容。
 
 否则，返回下一个类`LAndExpAST`的`Dump`和`getValue`。
 
 
 ```cpp
 // AST.h
+// LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
 class LOrExpAST : public BaseAST { //处理或，否则给上层l_and_exp模块
 public:
     enum TAG {L_AND_EXP, OP_L_OR_EXP};
@@ -873,44 +876,127 @@ int LOrExpAST::getValue() {
 }
 ```
 
-`LAndExpAST`类负责"&&"表达式。
+`LAndExpAST`类负责"&&"表达式，否则调用`EqExpAST`。
 ```cpp
+// LAndExp       ::= EqExp | LAndExp "&&" EqExp;
 class LAndExpAST : public BaseAST  //处理与
 ```
-`EqExpAST`类负责"=="和"!="表达式。
+
+`EqExpAST`类负责"=="和"!="表达式，否则调用`RelExpAST`。
 ```cpp
+// EqExp         ::= RelExp | EqExp ("==" | "!=") RelExp;
 class EqExpAST : public BaseAST //处理相等或不等
 ```
-`RelExpAST`类负责大小比较"<", ">", "<=", 和">="表达式。
+
+`RelExpAST`类负责大小比较"<", ">", "<=", 和">="表达式，否则调用`AddExpAST`。
 ```cpp
+// RelExp        ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
 class RelExpAST : public BaseAST  //处理大小比较
 ```
-`AddExpAST`类负责加"+"和减"-"。
+
+`AddExpAST`类负责加"+"和减"-"，否则调用`MulExpAST`。
 ```cpp
+// AddExp        ::= MulExp | AddExp ("+" | "-") MulExp;
 class AddExpAST : public BaseAST  //处理加减
 ```
-`MulExpAST`类负责乘"*", 除"/" 和取模"%"。
+`MulExpAST`类负责乘"*", 除"/" 和取模"%"，否则调用`UnaryExpAST`。
 ```cpp
+// MulExp        ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
 class MulExpAST : public BaseAST  //处理乘,除,取模运算
 ```
-`UnaryExpAST`类负责一元表达式，正号"+", 负号"-" 和非"!"。
+`UnaryExpAST`类有两个功能：
+
+1.处理一元表达式，正号"+", 负号"-" ,非"!" 。
+
+2.处理函数的情况，并调用`FuncRParamsAST`,处理函数括号内的东西。
+
+否则调用`PrimaryExpAST`。
 ```cpp
+// UnaryExp      ::= PrimaryExp | IDENT "(" [FuncRParams] ")" | UnaryOp UnaryExp;
+// UnaryOp       ::= "+" | "-" | "!";
 class UnaryExpAST : public BaseAST  //处理一元运算+,-,!
 ```
-`PrimaryExpAST`类负责剩余情况的处理，即另一个表达式Ext，一个常数number，一个变量Lval。
+```cpp
+// FuncRParams   ::= Exp {"," Exp};
+class FuncRParamsAST : public BaseAST {
+public:
+    std::vector<std::unique_ptr<ExpAST>> exps;  // 函数表达式的参数
+    std::string Dump() const;
+};
+
+```
+`PrimaryExpAST`类负责剩余表达式的情况：
+
+1.一个表达式Ext, 即表达式套表达式的情况，此时调用`ExpAST`类的方法
+
+2.一个常数number，此时直接算出其值，如果说这套表达式解析是一个大递归，那么此处就是其中一个递归出口（另一个是下面的`LValAsT`）
+
+3.一个变量Lval，即表达式已经是一个变量，此时调用`LValAST`类的方法
 ```cpp
 // PrimaryExp    ::= "(" Exp ")" | LVal | Number;
-class PrimaryExpAST : public BaseAST { 
-// 表达式成员，可以是另一个表达式exp，一个数number，或一个量lval
+class PrimaryExpAST : public BaseAST   // 表达式成员，可以是另一个表达式exp，一个数number，或一个量lval
+
+//AST.cpp 以Dump方法举例
+string PrimaryExpAST::Dump() const{
+    switch (tag)
+    {
+        case PARENTHESES: {
+            ScopeHelper scope("PrimaryExpAST");
+            return exp->Dump();
+        }
+        case NUMBER: {
+            ScopeHelper scope("PrimaryExpAST", to_string(number));
+            return to_string(number);
+        }
+        case LVAL: {
+            ScopeHelper scope("PrimaryExpAST");
+            return lval->Dump();
+        }
+    }
+    return "";
+}
+```
+
+`LValAST`类处理变量，可以视为表达式解析的递归出口，
+```cpp
+//AST.h
+class LValAST : public BaseAST {
 public:
-    enum TAG { PARENTHESES, NUMBER, LVAL};
-    TAG tag;
-    std::unique_ptr<ExpAST> exp;
-    std::unique_ptr<LValAST> lval;
-    int number;
-    std::string Dump() const ;
+    std::string ident;
+    // false 时返回存有该值的临时变量（寄存器），true时返回KoopaIR变量名，默认为false
+    std::string Dump(bool dump_ptr = false) const;
     int getValue();
 };
+//AST.cpp
+string LValAST::Dump(bool dump_ptr)const{
+    ScopeHelper scope("LValAST", ident);
+    SysYType *ty = st.getType(ident);
+    if(ty->ty == SysYType::SYSY_INT_CONST)
+        return to_string(st.getValue(ident));
+    else if(ty->ty == SysYType::SYSY_INT){
+        if(dump_ptr == false){
+            string tmp = st.getTmpName();
+            ki.load(tmp, st.getName(ident));
+            return tmp;
+        } else {
+            return st.getName(ident);
+        }
+    } else {
+        // func(ident)
+        if(ty->value == -1){
+            string tmp = st.getTmpName();
+            ki.load(tmp, st.getName(ident));
+            return tmp;
+        }
+        string tmp = st.getTmpName();
+        ki.getelemptr(tmp, st.getName(ident), "0");
+        return tmp;
+    }
+}
+
+int LValAST::getValue(){
+    return st.getValue(ident);
+}
 
 ```
 ### 5.5 函数
