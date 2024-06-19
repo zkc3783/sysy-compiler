@@ -247,7 +247,7 @@ class SysYType{
 **Symbol**：表示一个表项 包括标识符 ident、名称 name
 **STable**：表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
 
-### 4.2.1 NameTable
+#### 4.2.1 NameTable
 
 **NameManager**: 用来处理重复的变量名
 **getTmpName**: 返回一个临时的符号，如`%1`
@@ -267,7 +267,7 @@ public:
     std::string getLabelName(const std::string &s); // % 
 };
 ```
-### 4.2.2 Symbol
+#### 4.2.2 Symbol
 
 `Symbol`是符号表中的一个表项，记录了SysY中的变量的信息，定义如下：
 
@@ -282,7 +282,7 @@ public:
 };
 ```
 
-### 4.2.3 STable
+#### 4.2.3 STable
 
 `STable`是符号表，是`Symbol`条目按照`ident`字段进行的索引，为一个基本块中的信息。
 里面涉及到插入符号表，查找标识符是否存在，`getValue`、`getName`等操作返回符号表的值和名字。
