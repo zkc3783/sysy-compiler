@@ -408,9 +408,9 @@ void Visit(const koopa_raw_value_t &value) {
 
 ##### 3.2.1.1 前端实现
 
-> 先介绍如何得到Koopa IR的名称，再介绍 `SymbolTableStack` ，再描述IR生成的大致过程。
 
-首先要介绍如下用于 Koopa IR 命名管理的类 `NameManager` 。`getTmpName`函数返回一个临时符号，依次返回`%0`,`%1`等标号。`getName`函数的输入是一个字符串，即SysY语言中的**标识符(identifier)**，返回一个字符串作为其在Koopa IR中的名字。例如，输入标识符`foo`，可能返回`@foo_0`，`@foo_1`，以此类推。而`getLabelName`与此类似，用于生成Koopa IR中基本块的标签，例如`%then_1`。
+首先是用于 Koopa IR 命名管理的类 `NameManager`。
+`getTmpName`函数返回一个临时符号，依次返回`%0`,`%1`等标号。`getName`函数的输入是一个字符串，即SysY语言中的**标识符(identifier)**，返回一个字符串作为其在Koopa IR中的名字。例如，输入标识符`x`，可能返回`@x_0`，`@x_1`，以此类推。而`getLabelName`与此类似，用于生成Koopa IR中基本块的标签，例如`%then_1`。
 
 ```cpp
 class NameManager{
@@ -420,13 +420,13 @@ private:
 public:
     NameManager():cnt(0){}
     void reset();
-    std::string getTmpName();
-    std::string getName(const std::string &s);
-    std::string getLabelName(const std::string &s);
+    std::string getTmpName(); // 生成一个新的变量名
+    std::string getName(const std::string &s); // @ 
+    std::string getLabelName(const std::string &s); // % 
 };
 ```
 
-其次是栈式的符号表`SymbolTable`。它最重要的两个成员变量，一是封装了命名管理器` NameManager nm`，二是符号表的栈`std::deque<std::unique_ptr<SymbolTable>> sym_tb_st`。该类有两个函数`alloc`、`quit`，分别对应进入新的作用域时压栈、退出作用域时弹栈。此外，还有一系列负责插入的函数、负责查找的函数，以及`getTmpName`、`getLabelName`、`getVarName`三个由命名管理器直接向外提供的接口。
+其次是栈式的符号表`SymbolTable`。它最重要的两个成员变量，一是封装了命名管理器` NameManager nm`，二是符号表的栈`std::deque<std::unique_ptr<SymbolTable>> sym_tb_st`。该类有两个函数`alloc`、`quit`，分别对应进入新的作用域时压栈、退出作用域时弹栈。此外，还有一系列负责插入的函数、负责查找的函数，以及`getTmpName`、`getLabelName`、`getVarName`三个向外提供的接口。
 
 ```cpp
 
@@ -436,60 +436,48 @@ private:
     NameManager nm;
 public:
     const int UNKNOWN = -1;
-    void alloc();
-    void quit();
+    void alloc();// 在栈顶分配一个新的符号表
+    void quit();// 从栈顶弹出一个符号表
     void resetNameManager();
-    void insert(Symbol *symbol);
+    void insert(Symbol *symbol);// 插入一个符号
     void insert(const std::string &ident, SysYType::TYPE _type, int value);
     void insertINT(const std::string &ident);
     void insertINTCONST(const std::string &ident, int value);
     void insertFUNC(const std::string &ident, SysYType::TYPE _t);
-    void insertArray(const std::string &ident, const std::vector<int> &len, SysYType::TYPE _t);
-    bool exists(const std::string &ident);
-    int getValue(const std::string &ident);
-    SysYType *getType(const std::string &ident);
-    std::string getName(const std::string &ident);
+    //void insertArray(const std::string &ident, const std::vector<int> &len, SysYType::TYPE _t);
+    // 上述为插入各个类型的符号
+    bool exists(const std::string &ident);// 一个标识符是否存在于符号表栈中的任何一个作用域
+    int getValue(const std::string &ident);// 查找值
+    SysYType *getType(const std::string &ident);// 查找符号的类型
+    std::string getName(const std::string &ident);// 查找name
 
-    std::string getTmpName();   // inherit from name manager
-    std::string getLabelName(const std::string &label_ident); // inherit from name manager
-    std::string getVarName(const std::string& var);   // aux var name
+    std::string getTmpName();   // 继承 name manager
+    std::string getLabelName(const std::string &label_ident); // 继承 name manager
+    std::string getVarName(const std::string& var);   // 获取 var name
 };
 ```
 
-以下将选取几个重要的成员函数进行介绍。
+`SymbolTableStack` 的成员函数实现
 
-插入一个符号表表项`Symbol *`，直接调用栈顶的`SymbolTable`的`insert`函数。如下：
+插入一个符号表表项`Symbol`，直接调用栈顶的`SymbolTable`的`insert`函数
 
 ```cpp
 void SymbolTableStack::insert(Symbol *symbol){
     sym_tb_st.back()->insert(symbol);
 }
 ```
-
-插入基本类型的符号（非数组），给定SysY标识符`ident`，类型`_type`，初值`value`，向符号表中插入。这将先调用命名管理器`getName`方法，获得这个标识符`ident`在 Koopa IR 中具有的唯一名字，再将其插入栈顶符号表。如下：
-
+查找一个符号表表项，调用栈顶的`SymbolTable`的`exist`函数
 ```cpp
-void SymbolTableStack::insert(const std::string &ident, SysYType::TYPE _type, int value){
-    string name = nm.getName(ident);
-    sym_tb_st.back()->insert(ident, name, _type, value);
+bool SymbolTableStack::exists(const std::string &ident){
+    for(int i = (int)sym_tb_st.size() - 1; i >= 0; --i){
+        if(sym_tb_st[i]->exists(ident))
+            return true;
+    }
+    return false;
 }
 ```
 
-由此，怎么将`int`型以及`const int`型变量插入符号表是清晰的了：
-
-```cpp
-void SymbolTableStack::insertINT(const std::string &ident){
-    string name = nm.getName(ident);
-    sym_tb_st.back()->insertINT(ident, name);
-}
-
-void SymbolTableStack::insertINTCONST(const std::string &ident, int value){
-    string name = nm.getName(ident);
-    sym_tb_st.back()->insertINTCONST(ident, name, value);
-}
-```
-
-最后以`getValue`为例，看一下负责查找的函数。这个函数从栈顶往下开始找标识符`ident`，第一次找到就是该`ident`所在的作用域对应的符号表。返回这个表中标识符`ident`对应的`value`。
+从栈顶往下开始找标识符`ident`，第一次找到就是该`ident`所在的作用域对应的符号表。返回这个表中标识符`ident`对应的项
 
 ```cpp
 int SymbolTableStack::getValue(const std::string &ident){
@@ -499,6 +487,69 @@ int SymbolTableStack::getValue(const std::string &ident){
             break;
     }
     return sym_tb_st[i]->getValue(ident);
+}
+// 扫描栈查找并返回符号的值
+SysYType *SymbolTableStack::getType(const std::string &ident){
+    int i = (int)sym_tb_st.size() - 1;
+    for(; i >= 0; --i){
+        if(sym_tb_st[i]->exists(ident))
+            break;
+    }
+    return sym_tb_st[i]->getType(ident);
+}
+// 扫描栈查找并返回符号的类型
+std::string SymbolTableStack::getName(const std::string &ident){
+    int i = (int)sym_tb_st.size() - 1;
+    for(; i >= 0; --i){
+        if(sym_tb_st[i]->exists(ident))
+            break;
+    }
+    return sym_tb_st[i]->getName(ident);
+}
+// 查找符号名
+std::string SymbolTableStack::getTmpName(){
+    return nm.getTmpName();
+}
+// 临时变量名
+std::string SymbolTableStack::getLabelName(const std::string &label_ident){
+    return nm.getLabelName(label_ident);
+}
+// 标签名
+std::string SymbolTableStack::getVarName(const std::string& var){
+    return nm.getName(var);
+}
+// 变量名
+```
+
+`SymbolTable`的实现
+
+```cpp
+bool SymbolTable::exists(const std::string &ident){
+    return symbol_tb.find(ident) != symbol_tb.end();
+}
+// 查找符号表中是否存在标识符
+
+void SymbolTable::insert(Symbol *symbol){
+    symbol_tb.insert({symbol->ident, symbol});
+} // 插入符号表
+
+void SymbolTable::insert(const std::string &ident, const std::string &name, SysYType::TYPE _type, int value){
+    SysYType *ty = new SysYType(_type, value);
+    Symbol *sym = new Symbol(ident, name, ty);
+    insert(sym);
+}
+// 创建一个新的符号并插入符号表
+
+void SymbolTable::insertINT(const std::string &ident, const std::string &name){
+    insert(ident, name, SysYType::SYSY_INT, UNKNOWN);
+}
+// 在符号表中插入
+void SymbolTable::insertINTCONST(const std::string &ident, const std::string &name, int value){
+    insert(ident, name, SysYType::SYSY_INT_CONST, value);
+}
+
+void SymbolTable::insertFUNC(const std::string &ident, const std::string &name, SysYType::TYPE _t){
+    insert(ident, name, _t, UNKNOWN);
 }
 ```
 
