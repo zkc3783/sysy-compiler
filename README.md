@@ -1299,35 +1299,13 @@ public:
 
 #### 5.5.2 参数处理
 
-函数参数通过`FuncFParamsAST`类处理，该类维护一个参数列表，每个参数由`FuncFParamAST`类表示。
+函数参数通过FuncFParamsAST类处理，该类维护一个参数列表，每个参数由FuncFParamAST类表示。
 
 ```cpp
 class FuncFParamsAST : public BaseAST {
 public:
-<<<<<<< HEAD
     std::vector<std::unique_ptr<FuncFParamAST>> func_f_params; // 参数列表
     void Dump() const;
-=======
-    const int UNKNOWN = -1;
-    void alloc();// 在栈顶分配一个新的符号表
-    void quit();// 从栈顶弹出一个符号表
-    void resetNameTable();
-    void insert(Symbol *symbol);// 插入一个符号
-    void insert(const std::string &ident, SysYType::TYPE _type, int value);
-    void insertINT(const std::string &ident);
-    void insertINTCONST(const std::string &ident, int value);
-    void insertFUNC(const std::string &ident, SysYType::TYPE _t);
-    //void insertArray(const std::string &ident, const std::vector<int> &len, SysYType::TYPE _t);
-    // 上述为插入各个类型的符号
-    bool exists(const std::string &ident);// 一个标识符是否存在于符号表栈中的任何一个作用域
-    int getValue(const std::string &ident);// 查找值
-    SysYType *getType(const std::string &ident);// 查找符号的类型
-    std::string getName(const std::string &ident);// 查找name
-
-    std::string getTmpName();   // 继承 name manager
-    std::string getLabelName(const std::string &label_ident); // 继承 name manager
-    std::string getVarName(const std::string& var);   // 获取 var name
->>>>>>> 2255957f55f1961dadfb5cd4f1c2ee284306c725
 };
 ```
 
