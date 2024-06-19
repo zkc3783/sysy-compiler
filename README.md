@@ -209,7 +209,6 @@ public:
 
 其他AST结点的定义方式与之类似
 
-
 ## 4 语义分析
 
 ### 4.1 符号的类型
@@ -235,23 +234,26 @@ class SysYType{
 };
 ```
 
-这个类有三个字段，`ty`、`value`和`next`。
+`SysYType`有三个字段，`ty`、`value`和`next`。
 
 + `ty`表名类型，如`SYSY_INT`表示是一个整型、`SYSY_FUNC_VOID`表示这是一个返回值为空的函数
 + `value`存储的是常量
 
-
 ### 4.2 符号表
 
-主要涉及：`Symbol`、`STable`和`SStack`
-NameTable 处理重复的变量名
+主要涉及：`NameTable`、`Symbol`、`STable`
 
-Symbol表 表示一个表项 包括标识符 ident、名称 name
+**NameTable**：用于处理重复的变量名
+**Symbol**：表示一个表项 包括标识符 ident、名称 name
+**STable**：表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
 
-STable 表示一个大表 有标识符 ident、名称 name、类型 type 和值 value 
-SStack 用来处理符号表栈
+#### 4.2.1 NameTable
 
-NameManager用来处理重复的变量名
+**NameManager**: 用来处理重复的变量名
+**getTmpName**: 返回一个临时的符号，如`%1`
+**getName**: 返回一个标识符，返回中间代码
+**getLabelName**:返回 Koopa IR 基本块的标签
+
 ```cpp
 class NameTable{
 private:
@@ -260,11 +262,12 @@ private:
 public:
     NameTable():cnt(0){}
     void reset();
-    std::string getTmpName(); // 生成一个新的变量名
+    std::string getTmpName(); // 返回临时的符号
     std::string getName(const std::string &s); // @ 
     std::string getLabelName(const std::string &s); // % 
 };
 ```
+#### 4.2.2 Symbol
 
 `Symbol`是符号表中的一个表项，记录了SysY中的变量的信息，定义如下：
 
@@ -279,7 +282,10 @@ public:
 };
 ```
 
-`STable`是一个符号表，是`Symbol`条目按照`ident`字段进行的索引
+#### 4.2.3 STable
+
+`STable`是符号表，是`Symbol`条目按照`ident`字段进行的索引，为一个基本块中的信息。
+里面涉及到插入符号表，查找标识符是否存在，`getValue`、`getName`等操作返回符号表的值和名字。
 
 ```cpp
 class STable{
@@ -307,9 +313,64 @@ public:
 };
 ```
 
+`STable`封装了命名管理器`NameManager`。
+`STable`具体实现如下： 
+
+```cpp
+void STable::insert(Symbol *symbol){
+    symbol_tb.insert({symbol->ident, symbol});
+} 
+// 创建一个新的符号并插入符号表
+void STable::insert(const std::string &ident, const std::string &name, SysYType::TYPE _type, int value){
+    SysYType *ty = new SysYType(_type, value);
+    Symbol *sym = new Symbol(ident, name, ty);
+    insert(sym);
+}
+
+// 在符号表中插入
+void STable::insertINT(const std::string &ident, const std::string &name){
+    insert(ident, name, SysYType::SYSY_INT, UNKNOWN);
+}
+
+void STable::insertINTCONST(const std::string &ident, const std::string &name, int value){
+    insert(ident, name, SysYType::SYSY_INT_CONST, value);
+}
+
+void STable::insertFUNC(const std::string &ident, const std::string &name, SysYType::TYPE _t){
+    insert(ident, name, _t, UNKNOWN);
+}
+
+// 查找符号表中是否存在标识符
+bool STable::exists(const std::string &ident){
+    return symbol_tb.find(ident) != symbol_tb.end();
+}
+
+// 根据标识符 ident 在符号表中查找并返回对应的 Symbol 对象指针
+Symbol *STable::Search(const std::string &ident){
+    return symbol_tb.find(ident)->second;
+}
+
+// 返回给定标识符 ident 对应的 Symbol 的 value 值
+int STable::getValue(const std::string &ident){
+    return symbol_tb.find(ident)->second->ty->value;
+}
+
+// 返回给定标识符 ident 对应的 Symbol 的 SysYType 指针
+SysYType *STable::getType(const std::string &ident){
+    return symbol_tb.find(ident)->second->ty;
+}
+
+// 返回给定标识符 ident 对应的 Symbol 的 name 属性
+std::string STable::getName(const std::string &ident){
+    return symbol_tb.find(ident)->second->name;
+}
+
+```
+
+
 ### 4.3 符号栈
 
-`SStack`是`STable`组成的栈，同时用命名管理器`NameTable`处理重名变量
+`SStack`是`STable`组成的栈，同时用命名管理器`NameTable`处理重名变量。
 
 ```cpp
 class SStack{
@@ -338,11 +399,106 @@ public:
 };
 ```
 
+我们可以调用`insert`用来插入一个表项，调用栈顶`STable`的`insert`函数。
+如果是插入基本类型，那么这将先调用命名管理器`getName`，获得这个标识符`ident`在 `Koopa IR` 中具有的唯一名字，再将其插入栈顶符号表。
+这些`get`开头查找的函数从栈顶往下开始找标识符ident，第一次找到就是该ident所在的作用域对应的符号表。返回这个表中标识符ident对应的Name或者Value。
+
 ## 5 中间代码生成
 
 ### 5.1 语法树
 
 #### 5.1.1 定义
+
+在编译器设计中，抽象语法树（AST）是源代码的抽象符号表示，用来表示程序的语法结构。它通过树形结构体现出程序编写的层次性，其中每个节点都代表了源代码中的一种结构，如表达式、语句或声明。
+
+首先，我们定义了 **基类（BaseAST）**，即为所有语法树节点的基类，定义了通用的接口和抽象方法。这个基础类允许通过多态处理各种不同类型的语法树节点。这种设计允许编译器的其他组件统一处理不同类型的节点，而无需知道节点的具体类型。
+
+```cpp
+class BaseAST {
+public:
+    virtual ~BaseAST() = default;  // 确保派生类的正确析构
+};
+```
+
+每个具体的AST类都是从`BaseAST`派生的，并代表语法分析阶段中的一个特定的语法构造。例如，`FuncDefAST` 类代表一个函数定义，它直接映射到语法中的函数定义产生式：
+
+```cpp
+// FuncDef       ::= FuncType IDENT "(" [FuncFParams] ")" Block;
+class FuncDefAST : public BaseAST {
+public:
+    std::unique_ptr<BTypeAST> btype;    // 函数返回类型
+    std::string ident;                  // 函数名
+    std::unique_ptr<FuncFParamsAST> func_params; // 函数参数列表
+    std::unique_ptr<BlockAST> block;    // 函数体的AST节点
+
+    void Dump() const; // 递递归地生成中间代码
+};
+```
+
+在AST中，节点通常使用指针来表示子节点，这主要有几个原因：
+- **动态绑定**：使用指针可以在运行时解析具体的节点类型，利用多态进行适当的处理。
+- **灵活的树结构管理**：指针使得添加、移除和修改子节点变得简单，因为这些操作不需要在连续的内存空间中进行。
+- **内存管理**：使用智能指针（如 `std::unique_ptr`）可以自动管理节点的生命周期，避免内存泄漏，并简化复杂树结构的内存管理。
+
+通过这种方式，编译器前端将源代码转换为AST，后续的过程如优化和代码生成则直接操作这些抽象的表示形式，从而有效地进行程序分析和转换，最终生成高效的目标代码。
+
+我们将类间关系通过来表示如下，或点击[链接](file/类间关系.pdf)查看：
+
+```mermaid
+graph LR
+    CompUnitAST -->|func_defs| FuncDefAST
+    CompUnitAST -->|decls| DeclAST
+    FuncDefAST -->|btype| BTypeAST
+    FuncDefAST -->|func_params| FuncFParamsAST
+    FuncDefAST -->|block| BlockAST
+    FuncFParamsAST -->|func_f_params| FuncFParamAST
+    FuncFParamAST -->|btype| BTypeAST
+    BlockAST -->|block_items| BlockItemAST
+    BlockItemAST -->|decl| DeclAST
+    BlockItemAST -->|stmt| StmtAST
+    DeclAST -->|const_decl| ConstDeclAST
+    DeclAST -->|var_decl| VarDeclAST
+    StmtAST -->|exp| ExpAST
+    StmtAST -->|lval| LValAST
+    StmtAST -->|block| BlockAST
+    StmtAST -->|stmt| StmtAST
+    StmtAST -->|if_stmt| StmtAST
+    StmtAST -->|else_stmt| StmtAST
+    ConstDeclAST -->|const_defs| ConstDefAST
+    ConstDeclAST -->|btype| BTypeAST
+    VarDeclAST -->|var_defs| VarDefAST
+    VarDeclAST -->|btype| BTypeAST
+    ConstDefAST -->|const_init_val| ConstInitValAST
+    VarDefAST -->|init_val| InitValAST
+    InitValAST -->|exp| ExpAST
+    ConstInitValAST -->|const_exp| ConstExpAST
+    LValAST -->|exps| ExpAST
+    ExpAST -->|l_or_exp| LOrExpAST
+    PrimaryExpAST -->|exp| ExpAST
+    PrimaryExpAST -->|lval| LValAST
+    UnaryExpAST -->|primary_exp| PrimaryExpAST
+    UnaryExpAST -->|unary_exp| UnaryExpAST
+    UnaryExpAST -->|func_params| FuncRParamsAST
+    MulExpAST -->|unary_exp| UnaryExpAST
+    MulExpAST -->|mul_exp_1| MulExpAST
+    MulExpAST -->|unary_exp_2| UnaryExpAST
+    AddExpAST -->|mul_exp| MulExpAST
+    AddExpAST -->|add_exp_1| AddExpAST
+    AddExpAST -->|mul_exp_2| MulExpAST
+    RelExpAST -->|add_exp| AddExpAST
+    RelExpAST -->|rel_exp_1| RelExpAST
+    RelExpAST -->|add_exp_2| AddExpAST
+    EqExpAST -->|rel_exp| RelExpAST
+    EqExpAST -->|eq_exp_1| EqExpAST
+    EqExpAST -->|rel_exp_2| RelExpAST
+    LAndExpAST -->|eq_exp| EqExpAST
+    LAndExpAST -->|l_and_exp_1| LAndExpAST
+    LAndExpAST -->|eq_exp_2| EqExpAST
+    LOrExpAST -->|l_and_exp| LAndExpAST
+    LOrExpAST -->|l_or_exp_1| LOrExpAST
+    LOrExpAST -->|l_and_exp_2| LAndExpAST
+    FuncRParamsAST -->|exps| ExpAST
+```
 
 #### 5.1.2 结构生成器
 
@@ -394,6 +550,240 @@ void CompUnitAST::Dump()const {
 ```
 
 #### 5.1.3 可视化
+
+在编译器的开发过程中，对抽象语法树（AST）进行可视化能够帮助开发者理解源代码经过语法分析后的结构，并验证编译器是否正确地解析了程序结构。为了实现这一点，我们使用了mermaid，一个流行的图形化工具，来绘制抽象语法树的图形表示。我们通过将AST的结构转换为mermaid图表，可以生成清晰、直观的树形图，这对于调试和展示编译器的工作流程至关重要。
+
+例如对于如下代码，其覆盖了函数定义、条件语句、循环和基本运算等核心编程结构。我们通过mermaid绘制了它的抽象语法树。
+
+- **样例代码**
+
+```cpp
+int gv = 0;
+
+int addgv(int n)
+{
+    gv = gv + n;
+    return gv;
+}
+
+int pow(int x, int y)
+{    
+    int res = 1;
+    while (y > 0)
+    {
+        res = res * x;
+    	y = y - 1;
+    }
+    return res;
+}
+
+int f()
+{
+    int a = 3;
+    while(1)
+    {
+        a = a - 1;
+        if(a <= 0) break;
+    }
+    return 0;
+}
+
+int main()
+{
+    const int a = 1;
+    int x = 2, y = 3;
+    
+    int c;
+    c = pow(x, y);
+    
+    if(c == 8)
+    {
+        c = c - 1;
+    }
+
+    if(c != 8)
+    {
+        f();
+    }
+    return 0;
+}
+```
+
+- **抽象语法树**
+
+如下所示，或点击 [链接](file/样例语法树.pdf)。
+
+```mermaid
+graph TD
+    CompUnitAST --> VarDefAST_gv
+    VarDefAST_gv --> PrimaryExpAST_0
+
+    CompUnitAST --> FuncDefAST_addgv
+    FuncDefAST_addgv --> FuncFParamAST_addgv
+    FuncDefAST_addgv --> BTypeAST_i32_addgv
+    FuncDefAST_addgv --> BlockAST_addgv
+
+    BlockAST_addgv --> BlockItemAST_STMT_addgv1
+    BlockItemAST_STMT_addgv1 --> StmtAST_ASSIGN_addgv1
+    StmtAST_ASSIGN_addgv1 --> ExpAST_addgv1
+    ExpAST_addgv1 --> AddExpAST_addgv1
+    ExpAST_addgv1 --> PrimaryExpAST_gv_addgv
+    ExpAST_addgv1 --> PrimaryExpAST_n_addgv
+    StmtAST_ASSIGN_addgv1 --> LValAST_gv_addgv
+
+    BlockAST_addgv --> BlockItemAST_STMT_addgv2
+    BlockItemAST_STMT_addgv2 --> StmtAST_RETURN_addgv
+    StmtAST_RETURN_addgv --> ExpAST_gv_addgv
+    ExpAST_gv_addgv --> PrimaryExpAST_gv_addgv2
+
+    CompUnitAST --> FuncDefAST_pow
+    FuncDefAST_pow --> FuncFParamAST_pow1
+    FuncDefAST_pow --> FuncFParamAST_pow2
+    FuncDefAST_pow --> BTypeAST_i32_pow
+    FuncDefAST_pow --> BlockAST_pow
+
+    BlockAST_pow --> BlockItemAST_DECL_pow
+    BlockItemAST_DECL_pow --> VarDeclAST_pow
+    VarDeclAST_pow --> VarDefAST_res_pow
+    VarDefAST_res_pow --> ExpAST_res_pow
+    ExpAST_res_pow --> PrimaryExpAST_1_pow
+
+    BlockAST_pow --> BlockItemAST_STMT_pow1
+    BlockItemAST_STMT_pow1 --> StmtAST_WHILE_pow
+    StmtAST_WHILE_pow --> ExpAST_pow1
+    ExpAST_pow1 --> RelExpAST_pow
+    ExpAST_pow1 --> PrimaryExpAST_y_pow
+    ExpAST_pow1 --> PrimaryExpAST_0_pow
+    StmtAST_WHILE_pow --> StmtAST_BLOCK_pow
+
+    StmtAST_BLOCK_pow --> BlockAST_pow_inner
+    BlockAST_pow_inner --> BlockItemAST_STMT_pow_inner1
+    BlockItemAST_STMT_pow_inner1 --> StmtAST_ASSIGN_pow1
+    StmtAST_ASSIGN_pow1 --> ExpAST_pow_inner1
+    ExpAST_pow_inner1 --> MulExpAST_pow
+    ExpAST_pow_inner1 --> PrimaryExpAST_res_pow1
+    ExpAST_pow_inner1 --> PrimaryExpAST_x_pow
+    StmtAST_ASSIGN_pow1 --> LValAST_res_pow1
+
+    BlockAST_pow_inner --> BlockItemAST_STMT_pow_inner2
+    BlockItemAST_STMT_pow_inner2 --> StmtAST_ASSIGN_pow2
+    StmtAST_ASSIGN_pow2 --> ExpAST_pow_inner2
+    ExpAST_pow_inner2 --> AddExpAST_pow
+    ExpAST_pow_inner2 --> PrimaryExpAST_y_pow1
+    ExpAST_pow_inner2 --> PrimaryExpAST_1_pow2
+    StmtAST_ASSIGN_pow2 --> LValAST_y_pow1
+
+    BlockAST_pow --> BlockItemAST_STMT_pow2
+    BlockItemAST_STMT_pow2 --> StmtAST_RETURN_pow
+    StmtAST_RETURN_pow --> ExpAST_res_pow2
+    ExpAST_res_pow2 --> PrimaryExpAST_res_pow2
+    
+    CompUnitAST --> FuncDefAST_f
+    FuncDefAST_f --> BTypeAST_i32_f
+    FuncDefAST_f --> BlockAST_f
+
+    BlockAST_f --> BlockItemAST_DECL_f
+    BlockItemAST_DECL_f --> VarDeclAST_f
+    VarDeclAST_f --> VarDefAST_a_f
+    VarDefAST_a_f --> ExpAST_a_f
+    ExpAST_a_f --> PrimaryExpAST_3_f
+
+    BlockAST_f --> BlockItemAST_STMT_f1
+    BlockItemAST_STMT_f1 --> StmtAST_WHILE_f
+    StmtAST_WHILE_f --> ExpAST_f1
+    ExpAST_f1 --> PrimaryExpAST_1_f
+    StmtAST_WHILE_f --> StmtAST_BLOCK_f
+
+    StmtAST_BLOCK_f --> BlockAST_f_inner
+    BlockAST_f_inner --> BlockItemAST_STMT_f_inner1
+    BlockItemAST_STMT_f_inner1 --> StmtAST_ASSIGN_f
+    StmtAST_ASSIGN_f --> ExpAST_f_inner1
+    ExpAST_f_inner1 --> AddExpAST_f
+    ExpAST_f_inner1 --> PrimaryExpAST_a_f1
+    ExpAST_f_inner1 --> PrimaryExpAST_1_f2
+    StmtAST_ASSIGN_f --> LValAST_a_f1
+
+    BlockAST_f_inner --> BlockItemAST_STMT_f_inner2
+    BlockItemAST_STMT_f_inner2 --> StmtAST_IF_f
+    StmtAST_IF_f --> ExpAST_f2
+    ExpAST_f2 --> RelExpAST_f
+    ExpAST_f2 --> PrimaryExpAST_a_f2
+    ExpAST_f2 --> PrimaryExpAST_0_f
+    StmtAST_IF_f --> StmtAST_BREAK_f
+
+    BlockAST_f --> BlockItemAST_STMT_f2
+    BlockItemAST_STMT_f2 --> StmtAST_RETURN_f
+    StmtAST_RETURN_f --> ExpAST_f3
+    ExpAST_f3 --> PrimaryExpAST_0_f2
+
+    CompUnitAST --> FuncDefAST_main
+    FuncDefAST_main --> BTypeAST_i32_main
+    FuncDefAST_main --> BlockAST_main
+
+    BlockAST_main --> BlockItemAST_DECL_main1
+    BlockItemAST_DECL_main1 --> ConstDeclAST_main
+    ConstDeclAST_main --> ConstDefAST_a_main
+    ConstDefAST_a_main --> PrimaryExpAST_1_main
+
+    BlockAST_main --> BlockItemAST_DECL_main2
+    BlockItemAST_DECL_main2 --> VarDeclAST_main
+    VarDeclAST_main --> VarDefAST_x_main
+    VarDefAST_x_main --> ExpAST_x_main
+    ExpAST_x_main --> PrimaryExpAST_2_main
+    VarDeclAST_main --> VarDefAST_y_main
+    VarDefAST_y_main --> ExpAST_y_main
+    ExpAST_y_main --> PrimaryExpAST_3_main
+
+    BlockAST_main --> BlockItemAST_DECL_main3
+    BlockItemAST_DECL_main3 --> VarDeclAST_main2
+    VarDeclAST_main2 --> VarDefAST_c_main
+
+    BlockAST_main --> BlockItemAST_STMT_main1
+    BlockItemAST_STMT_main1 --> StmtAST_ASSIGN_main
+    StmtAST_ASSIGN_main --> ExpAST_main1
+    ExpAST_main1 --> ExpAST_x_main1
+    ExpAST_x_main1 --> PrimaryExpAST_x_main1
+    ExpAST_main1 --> ExpAST_y_main1
+    ExpAST_y_main1 --> PrimaryExpAST_y_main2
+    StmtAST_ASSIGN_main --> LValAST_c_main1
+
+    BlockAST_main --> BlockItemAST_STMT_main2
+    BlockItemAST_STMT_main2 --> StmtAST_IF_main1
+    StmtAST_IF_main1 --> ExpAST_main2
+    ExpAST_main2 --> EqExpAST_main
+    ExpAST_main2 --> PrimaryExpAST_c_main1
+    ExpAST_main2 --> PrimaryExpAST_8_main
+    StmtAST_IF_main1 --> StmtAST_BLOCK_main1
+
+    StmtAST_BLOCK_main1 --> BlockAST_main_inner1
+    BlockAST_main_inner1 --> BlockItemAST_STMT_main_inner1
+    BlockItemAST_STMT_main_inner1 --> StmtAST_ASSIGN_main1
+    StmtAST_ASSIGN_main1 --> ExpAST_main_inner1
+    ExpAST_main_inner1 --> AddExpAST_main
+    ExpAST_main_inner1 --> PrimaryExpAST_c_main2
+    ExpAST_main_inner1 --> PrimaryExpAST_1_main1
+    StmtAST_ASSIGN_main1 --> LValAST_c_main2
+
+    BlockAST_main --> BlockItemAST_STMT_main3
+    BlockItemAST_STMT_main3 --> StmtAST_IF_main2
+    StmtAST_IF_main2 --> ExpAST_main3
+    ExpAST_main3 --> EqExpAST_main2
+    ExpAST_main3 --> PrimaryExpAST_c_main3
+    ExpAST_main3 --> PrimaryExpAST_8_main1
+    StmtAST_IF_main2 --> StmtAST_BLOCK_main2
+
+    StmtAST_BLOCK_main2 --> BlockAST_main_inner2
+    BlockAST_main_inner2 --> BlockItemAST_STMT_main_inner2
+    BlockItemAST_STMT_main_inner2 --> StmtAST_EXP_main
+    StmtAST_EXP_main --> ExpAST_main4
+
+    BlockAST_main --> BlockItemAST_STMT_main4
+    BlockItemAST_STMT_main4 --> StmtAST_RETURN_main
+    StmtAST_RETURN_main --> ExpAST_main5
+    ExpAST_main5 --> PrimaryExpAST_0_main3
+```
+
+通过这个样例，我们展示了对于一个简单的SysY语言程序，其生成对应AST的结构。
 
 ### 5.2 变量
 

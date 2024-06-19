@@ -199,14 +199,14 @@ public:
     void Dump(bool is_global = false) const;
 };
 
-// InitVal       ::= Exp | "{" [InitVal {"," InitVal}] "}";
+// InitVal       ::= Exp
 class InitValAST : public BaseAST{
 public:
     std::unique_ptr<ExpAST> exp;
     std::string Dump() const;
 };
 
-// ConstInitVal  ::= ConstExp | "{" [ConstInitVal {"," ConstInitVal}] "}";
+// ConstInitVal  ::= ConstExp;
 class ConstInitValAST : public BaseAST {
 public:
     std::unique_ptr<ConstExpAST> const_exp;
