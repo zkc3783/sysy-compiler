@@ -242,8 +242,8 @@ public:
 class ExpAST : public BaseAST {
 public:
     std::unique_ptr<LOrExpAST> l_or_exp;
-    std::string Dump() const;
-    int getValue();
+    std::string Dump() const;//生成计算表达式的值的中间代码，返回存储该值的寄存器
+    int getValue(); //直接返回表达式的值
 };
 
 class PrimaryExpAST : public BaseAST { //表达式成员，可以是另一个表达式exp，一个数number，或一个量lval
