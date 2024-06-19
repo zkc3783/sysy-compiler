@@ -43,7 +43,7 @@ SysYType::SysYType(TYPE _t, const std::vector<int> &len):ty(_t), value(-1), next
     buildFromArrayType(len, _t == SYSY_ARRAY_CONST);
 }
 */
-/*
+
 SysYType::~SysYType() { 
     auto p = next;
     if(p != nullptr){
@@ -52,7 +52,7 @@ SysYType::~SysYType() {
         delete prev;
     } // p若不是空指针，删除当前p
 }
-*/
+
 /*
 void SysYType::buildFromArrayType(const std::vector<int> &len, bool is_const){
     TYPE t = is_const ? SYSY_ARRAY_CONST : SYSY_ARRAY;

@@ -66,7 +66,38 @@ WhileStack wst;         // 用栈管理循环，记录入口、循环体和结�
 //     }
 // }
 
+class ScopeHelper {
+private:
+    static int depth;  // 静态变量，用于记录当前嵌套层数
+    std::string type;
+    std::string name;
+
+    // 辅助函数，用于生成当前层次的缩进
+    std::string getIndent() const {
+        return std::string(depth * 2, ' ');  // 每层缩进两个空格
+    }
+
+public:
+    ScopeHelper(const std::string& type, const std::string& name = "") : type(type), name(name) {
+        std::cout << getIndent();  // 输出当前缩进
+        std::cout << type;  // 输出类型名
+        if (!name.empty()) {
+            std::cout << " (" << name << ")";  // 如果变量名不为空，则输出变量名
+        }
+        std::cout << "{" << std::endl;
+        depth++;  // 进入新的层级
+    }
+    ~ScopeHelper() {
+        depth--;  // 退出当前层级
+        std::cout << getIndent() << "}" << std::endl;
+    }
+};
+
+// 初始化静态成员变量
+int ScopeHelper::depth = 0;
+
 void CompUnitAST::Dump()const {
+    ScopeHelper scope("CompUnitAST");
     st.alloc(); // 全局作用域
     this->DumpGlobalVar();  // 处理全局变量  
     // 库函数声明
@@ -104,6 +135,7 @@ void CompUnitAST::DumpGlobalVar() const{
 }
 
 void FuncDefAST::Dump() const {
+    ScopeHelper scope("FuncDefAST", ident);
     st.resetNameManager();
     
     // 函数名加到符号表
@@ -187,6 +219,7 @@ void FuncDefAST::Dump() const {
 }
 
 string FuncFParamAST::Dump() const{
+    ScopeHelper scope("FuncFParamAST");
     // if(tag == VARIABLE){
         return "i32";
     // }
@@ -206,6 +239,7 @@ void FuncFParamAST::getIndex(std::vector<int> &len){
 }
 
 void BlockAST::Dump(bool new_symbol_tb) const {
+    ScopeHelper scope("BlockAST");
     // into this Block
     if(new_symbol_tb)
         st.alloc();
@@ -220,6 +254,7 @@ void BlockAST::Dump(bool new_symbol_tb) const {
 }
 
 void BlockItemAST::Dump() const{
+    ScopeHelper scope("BlockItemAST", tag == DECL ? "DECL" : "STMT");
     if(!bc.alive()) return;
     if(tag == DECL){
         decl->Dump();
@@ -229,14 +264,20 @@ void BlockItemAST::Dump() const{
 }
 
 void DeclAST::Dump() const{
+    ScopeHelper scope("BlockItemAST", tag == CONST_DECL ? "CONST_DECL" : "VAR_DECL");
     if(tag == VAR_DECL)
         var_decl->Dump();
     else
         const_decl->Dump();
 }
 
-
 void StmtAST::Dump() const {
+    ScopeHelper scope("StmtAST", [&]() -> const std::string& {
+        static const std::string tagNames[] = {
+            "RETURN", "ASSIGN", "BLOCK", "EXP", "WHILE", "BREAK", "CONTINUE", "IF"
+        };
+        return tagNames[tag];
+    }());
     if(!bc.alive()) return;
     if(tag == RETURN){
         // bc.finish()写在这里不对！
@@ -317,6 +358,7 @@ void StmtAST::Dump() const {
 }
 
 void ConstDeclAST::Dump() const{
+    ScopeHelper scope("ConstDeclAST");
     int n = const_defs.size();
     for(int i = 0; i < n; ++i){
         const_defs[i]->Dump();
@@ -324,6 +366,7 @@ void ConstDeclAST::Dump() const{
 }
 
 void VarDeclAST::Dump() const {
+    ScopeHelper scope("VarDeclAST");
     int n = var_defs.size();
     for(int i = 0; i < n; ++i){
         var_defs[i]->Dump();
@@ -331,12 +374,14 @@ void VarDeclAST::Dump() const {
 }
 
 void BTypeAST::Dump() const{
+    ScopeHelper scope("BTypeAST", "i32");
     if(tag == BTypeAST::INT){
         ks.append("i32");
     }
 }
 
 void ConstDefAST::Dump(bool is_global) const{
+    ScopeHelper scope("ConstDefAST", ident);
     // if(tag == ARRAY){
     //     DumpArray(is_global);
     //     return;
@@ -376,6 +421,7 @@ void ConstDefAST::Dump(bool is_global) const{
 // }
 
 void VarDefAST::Dump(bool is_global) const{
+    ScopeHelper scope("VarDefAST", ident);
     // if(tag == ARRAY){
     //     DumpArray(is_global);
     //     return;
@@ -516,6 +562,7 @@ int ConstInitValAST::getValue(){
 // }
 
 string LValAST::Dump(bool dump_ptr)const{
+    ScopeHelper scope("LValAST", ident);
     // if(tag == VARIABLE){
         // Hint: a single a ident be a array address
         SysYType *ty = st.getType(ident);
