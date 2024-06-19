@@ -49,7 +49,7 @@ class SysYType{
 class Symbol{
 public:
     std::string ident;   // SysY标识符，x,y
-    std::string name;    // KoopaIR中的具名变量，@x_1, @y_1, ..., @n_2
+    std::string name;    // KoopaIR中的具名变量
     SysYType *ty;
     Symbol(const std::string &_ident, const std::string &_name, SysYType *_t); // 构造函数：标识符 _ident、名称 _name 和类型指针 _t 
     ~Symbol();
