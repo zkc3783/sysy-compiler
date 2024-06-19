@@ -367,24 +367,6 @@ std::string STable::getName(const std::string &ident){
 
 ```
 
-如果我们给出如下代码：
-
-```cpp
-int addgv(int n)
-{
-    int gv = 0;
-    gv = gv + n;
-    return gv;
-}
-```
-那么`STable`如下： 
-Ident: gv, Name: gv, Type: INT, Value: 0
-Ident: addgv, Name: addgv, Type: FUNC, Value: -1
-Ident: n, Name: n, Type: INT, Value: -1
-
-Value 的值也会根据全局符号表的改变而改变。
-
-
 ### 4.3 符号栈
 
 `SStack`是`STable`组成的栈，同时用命名管理器`NameTable`处理重名变量。
@@ -419,6 +401,26 @@ public:
 我们可以调用`insert`用来插入一个表项，调用栈顶`STable`的`insert`函数。
 如果是插入基本类型，那么这将先调用命名管理器`getName`，获得这个标识符`ident`在 `Koopa IR` 中具有的唯一名字，再将其插入栈顶符号表。
 这些`get`开头查找的函数从栈顶往下开始找标识符ident，第一次找到就是该ident所在的作用域对应的符号表。返回这个表中标识符ident对应的Name或者Value。
+
+如果我们给出input.sy中的代码：
+```cpp
+int gv = 0;
+
+int addgv(int n)
+{
+    gv = gv + n;
+    return gv;
+}
+
+```
+符号表栈中有两个符号表：
+第一个：
+Ident: gv, Name: gv, Type: INT, Value: 0
+第二个：
+Ident: addgv, Name: addgv, Type: FUNC, Value: -1
+Ident: gv, Name: gv, Type: INT, Value: -1
+Ident: n, Name: n, Type: INT, Value: -1
+在NameTable中查找gv，然后更新符号表即可。
 
 ## 5 中间代码生成
 
